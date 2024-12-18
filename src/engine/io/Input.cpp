@@ -36,7 +36,7 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void scrollCallback(GLFWwindow* window, double xoff, double yoff) {
-  Input::s_mouseDWheel += yoff;
+  Input::s_mouseDWheel += yoff - xoff;
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {

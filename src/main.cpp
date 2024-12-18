@@ -19,10 +19,6 @@ const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
 const float FOV = 70.0f;
 
-bool cursorShown = false;
-bool fullscreen = false;
-int win_xpos = 0, win_ypos = 0, win_width = SCR_WIDTH, win_height = SCR_HEIGHT;
-
 glm::mat4 projection;
 
 int main() {
