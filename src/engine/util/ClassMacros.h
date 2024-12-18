@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #define DELETE_COPY(T)          \
 T(const T&) = delete;           \
 T& operator=(const T&) = delete

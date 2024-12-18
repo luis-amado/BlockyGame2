@@ -13,6 +13,7 @@
 #include "engine/camera/Camera.h"
 #include "engine/io/Window.h"
 #include "engine/io/Input.h"
+#include "engine/rendering/Mesh.h"
 
 const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
@@ -32,7 +33,6 @@ int main() {
 
   Input::Init(&window);
 
-  // vertices
   float vertices[] = {
     // NORTH (-z)
     1.0f, 1.0f, 0.0f,  0.0f, 1.0f,
@@ -66,7 +66,6 @@ int main() {
     0.0f, 0.0f, 0.0f,  1.0f, 1.0f,
   };
 
-  // indices
   unsigned int indices[] = {
      0,  1,  2,  2,  3,  0,
      4,  5,  6,  6,  7,  4,
@@ -76,26 +75,7 @@ int main() {
     20, 21, 22, 22, 23, 20,
   };
 
-  // vao
-  unsigned int VAO;
-  glGenVertexArrays(1, &VAO);
-  glBindVertexArray(VAO);
-
-  // vbo
-  unsigned int VBO;
-  glGenBuffers(1, &VBO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-
-  // ebo
-  unsigned int EBO;
-  glGenBuffers(1, &EBO);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+  Mesh mesh(vertices, 120, indices, 36);
 
   // texture
   Texture texture("dirt.png");
@@ -125,14 +105,10 @@ int main() {
     shader.LoadMatrix4f("projection", projection);
     shader.LoadMatrix4f("view", view);
 
-    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, NULL);
+    mesh.Draw();
 
     window.FinishFrame();
   }
-
-  glDeleteBuffers(1, &VBO);
-  glDeleteBuffers(1, &EBO);
-  glDeleteVertexArrays(1, &VAO);
 
   return 0;
 }

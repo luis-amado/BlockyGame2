@@ -32,7 +32,9 @@ Texture::Texture(const std::string& fileName) {
 }
 
 Texture::~Texture() {
-  glDeleteTextures(1, &m_textureID);
+  if (m_textureID != 0) {
+    glDeleteTextures(1, &m_textureID);
+  }
 }
 
 void Texture::Use(unsigned int slot) const {

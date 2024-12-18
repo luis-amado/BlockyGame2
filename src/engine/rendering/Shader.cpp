@@ -70,7 +70,9 @@ Shader::~Shader() {
 }
 
 void Shader::Use() const {
-  glUseProgram(m_shaderProgram);
+  if (m_shaderProgram != 0) {
+    glUseProgram(m_shaderProgram);
+  }
 }
 
 void Shader::LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix) {
