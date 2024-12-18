@@ -14,6 +14,10 @@ Camera::Camera(glm::vec3 position, float rotX, float rotY)
 
 void Camera::Update(GLFWwindow* window) {
 
+  // Use scroll wheel to update speed
+  m_speed += Input::GetMouseDWheel() * 0.1f;
+  m_speed = std::max(0.0f, m_speed);
+
   double deltaTime = Time::deltaTime;
 
   // Update camera position relative to its forward direction
@@ -52,6 +56,7 @@ void Camera::Update(GLFWwindow* window) {
   } else if (m_rotX < -90.0f) {
     m_rotX = -90.0f;
   }
+
 
 }
 

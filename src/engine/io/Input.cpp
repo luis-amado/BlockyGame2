@@ -7,6 +7,7 @@
 
 double Input::s_mouseDX = 0.0;
 double Input::s_mouseDY = 0.0;
+double Input::s_mouseDWheel = 0.0;
 double Input::s_prevMouseX = 0.0;
 double Input::s_prevMouseY = 0.0;
 bool Input::s_framebufferTransition = false;
@@ -18,6 +19,8 @@ Window* Input::s_window = nullptr;
 // Callback implementations
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 
+  // Prevent cursor position change from affecting position offset after a resize
+  // This is because there can be jumps when the framebuffer resizes
   if (Input::s_framebufferTransition) {
     Input::s_framebufferTransition = false;
     Input::s_prevMouseX = xpos;
@@ -28,11 +31,12 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
   Input::s_mouseDX += xpos - Input::s_prevMouseX;
   Input::s_mouseDY += ypos - Input::s_prevMouseY;
 
-
   Input::s_prevMouseX = xpos;
   Input::s_prevMouseY = ypos;
+}
 
-
+void scrollCallback(GLFWwindow* window, double xoff, double yoff) {
+  Input::s_mouseDWheel += yoff;
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -69,6 +73,10 @@ double Input::GetMouseDY() {
   return s_mouseDY;
 }
 
+double Input::GetMouseDWheel() {
+  return s_mouseDWheel;
+}
+
 void Input::Init(Window* window) {
   s_window = window;
 
@@ -78,15 +86,19 @@ void Input::Init(Window* window) {
   // Setup input callbacks
   glfwSetCursorPosCallback(window->GetHandle(), mousePositionCallback);
   glfwSetKeyCallback(window->GetHandle(), keyCallback);
+  glfwSetScrollCallback(window->GetHandle(), scrollCallback);
 
   // Hide and lock cursor
   glfwSetCursorPos(window->GetHandle(), 0, 0);
   glfwSetInputMode(window->GetHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+  Reset();
 }
 
 void Input::Reset() {
   s_mouseDX = 0.0;
   s_mouseDY = 0.0;
+  s_mouseDWheel = 0.0;
 }
 
 void Input::Resized() {
