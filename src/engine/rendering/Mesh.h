@@ -7,6 +7,7 @@
 class Mesh {
 public:
 
+
   Mesh(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount);
 
   DELETE_COPY(Mesh);
