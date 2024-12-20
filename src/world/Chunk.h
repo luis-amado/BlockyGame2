@@ -18,14 +18,16 @@ public:
 
   static const int CHUNK_WIDTH;
   static const int CHUNK_HEIGHT;
+  static const int SUBCHUNK_HEIGHT;
+  static const int SUBCHUNK_LAYERS;
 
 private:
   glm::ivec2 m_chunkCoord;
-  std::vector<bool> blockstates;
-  std::optional<Mesh> m_mesh = std::nullopt;
+  std::vector<bool> m_blockstates;
+  std::vector<Mesh> m_subchunkMeshes;
 
   void GenerateTerrain();
-  void GenerateMesh();
+  void GenerateMeshForSubchunk(int i);
 
   inline int PosToIndex(int x, int y, int z) const;
   bool IsInsideChunk(int x, int y, int z) const;

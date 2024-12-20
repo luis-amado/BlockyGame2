@@ -10,6 +10,7 @@ public:
   static double GetMouseDX();
   static double GetMouseDY();
   static double GetMouseDWheel();
+  static bool IsCursorShown();
 
   static void Init(Window* window);
   static void Reset();

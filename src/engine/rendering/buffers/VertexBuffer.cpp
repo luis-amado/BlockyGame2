@@ -3,16 +3,26 @@
 
 #include "VertexBuffer.h"
 
+VertexBuffer::VertexBuffer() {
+  glGenBuffers(1, &m_vbo);
+}
+
 VertexBuffer::VertexBuffer(float* vertices, size_t size) {
   glGenBuffers(1, &m_vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+  // glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  // glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+  SetData(vertices, size);
 }
 
 VertexBuffer::~VertexBuffer() {
   if (m_vbo != 0) {
     glDeleteBuffers(1, &m_vbo);
   }
+}
+
+void VertexBuffer::SetData(float* vertices, size_t size) const {
+  Bind();
+  glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
 }
 
 void VertexBuffer::Bind() const {

@@ -7,7 +7,7 @@
 class Mesh {
 public:
 
-
+  Mesh();
   Mesh(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount);
 
   DELETE_COPY(Mesh);
@@ -15,8 +15,11 @@ public:
   Mesh(Mesh&& other);
   Mesh& operator=(Mesh&& other);
 
+  void SetData(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount);
   void Bind() const;
   void Draw() const;
+
+  bool HasData() const;
 
 private:
   VertexArray m_vertexArray;
@@ -24,4 +27,7 @@ private:
   IndexBuffer m_indexBuffer;
 
   unsigned int m_indexCount;
+  bool m_hasData;
+
+  void SetupAttributes() const;
 };

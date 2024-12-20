@@ -77,6 +77,10 @@ double Input::GetMouseDWheel() {
   return s_mouseDWheel;
 }
 
+bool Input::IsCursorShown() {
+  return s_cursorShown;
+}
+
 void Input::Init(Window* window) {
   s_window = window;
 

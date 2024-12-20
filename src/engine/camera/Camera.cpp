@@ -44,20 +44,20 @@ void Camera::Update(GLFWwindow* window) {
   }
 
   // Camera rotation
-  m_rotY += Input::GetMouseDX() * sensitivity;
-  m_rotX += Input::GetMouseDY() * sensitivity;
+  if (!Input::IsCursorShown()) {
+    m_rotY += Input::GetMouseDX() * sensitivity;
+    m_rotX += Input::GetMouseDY() * sensitivity;
 
-  // Normalize camera rotation
-  m_rotY = std::fmodf(m_rotY, 360.0f);
+    // Normalize camera rotation
+    m_rotY = std::fmodf(m_rotY, 360.0f);
 
-  // Lock max vertical rotation to straight up and straight down
-  if (m_rotX > 90.0f) {
-    m_rotX = 90.0f;
-  } else if (m_rotX < -90.0f) {
-    m_rotX = -90.0f;
+    // Lock max vertical rotation to straight up and straight down
+    if (m_rotX > 90.0f) {
+      m_rotX = 90.0f;
+    } else if (m_rotX < -90.0f) {
+      m_rotX = -90.0f;
+    }
   }
-
-
 }
 
 glm::mat4 Camera::CreateViewMatrix() const {
