@@ -49,10 +49,14 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
   glClearColor(0.0, 0.0, 0.0, 1.0);
 
   glEnable(GL_DEPTH_TEST);
-  // glEnable(GL_CULL_FACE);
+  glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
 
   glfwSwapInterval(1);
+
+  // Get window stats
+  const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  LOG(INFO) << "Window refresh rate: " << mode->refreshRate << " hz";
 
   return window;
 }

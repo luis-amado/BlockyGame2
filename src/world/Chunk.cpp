@@ -24,7 +24,7 @@ Chunk::Chunk(glm::ivec2 chunkCoord)
 }
 
 void Chunk::GenerateTerrain() {
-  // For now, I'm filling up the whole chunk with solid blocks
+  // For now, I'm filling up the whole terrain with solid blocks
 
   int terrainHeight = 60;
 

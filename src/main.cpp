@@ -1,3 +1,7 @@
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
@@ -33,60 +37,34 @@ int main() {
 
   Chunk chunk({ 0, 0 });
 
-  float vertices[] = {
-    // NORTH (-z)
-    1.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-    1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-    // SOUTH (+z)
-    0.0f, 1.0f, 1.0f,  0.0f, 1.0f,
-    0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-    1.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-    1.0f, 1.0f, 1.0f,  1.0f, 1.0f,
-    // EAST (+x)
-    1.0f, 1.0f, 1.0f,  0.0f, 1.0f,
-    1.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-    1.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-    // WEST (-x)
-    0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-    0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-    0.0f, 1.0f, 1.0f,  1.0f, 1.0f,
-    // UP (+y)
-    0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-    0.0f, 1.0f, 1.0f,  0.0f, 0.0f,
-    1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
-    1.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-    // DOWN (-y)
-    1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-    1.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-    0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-  };
-
-  unsigned int indices[] = {
-     0,  1,  2,  2,  3,  0,
-     4,  5,  6,  6,  7,  4,
-     8,  9, 10, 10, 11,  8,
-    12, 13, 14, 14, 15, 12,
-    16, 17, 18, 18, 19, 16,
-    20, 21, 22, 22, 23, 20,
-  };
-
-  Mesh mesh(vertices, 120, indices, 36);
-
   // texture
   Texture texture("dirt.png");
   texture.Use();
 
   Shader shader("main");
 
-  Camera camera({ 0, 0, 4 });
+  Camera camera({ 0, 63, 16 });
+
+  // SETUP IMGUI
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
+  ImGui_ImplOpenGL3_Init("#version 330");
 
   while (window.IsRunning()) {
     window.BeginFrame();
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::Begin("This is my weird window");
+    ImGui::Text("Hello there");
+    if (ImGui::Button("WOW")) {
+      LOG(INFO) << "THATS COOL";
+    }
+    ImGui::End();
 
     camera.Update(windowHandle);
 
@@ -99,10 +77,16 @@ int main() {
     shader.LoadMatrix4f("view", view);
 
     chunk.Draw(shader);
-    // mesh.Draw();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     window.FinishFrame();
   }
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
 
   return 0;
 }
