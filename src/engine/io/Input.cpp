@@ -11,6 +11,7 @@ double Input::s_mouseDWheel = 0.0;
 double Input::s_prevMouseX = 0.0;
 double Input::s_prevMouseY = 0.0;
 bool Input::s_framebufferTransition = false;
+std::unordered_map<int, std::vector<KeyCallback>> Input::s_keyCallbacks;
 
 bool Input::s_cursorShown = false;
 
@@ -63,6 +64,10 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
     Input::s_cursorShown = !Input::s_cursorShown;
   }
+
+  for (const KeyCallback& callback : Input::s_keyCallbacks[key]) {
+    callback(action, mods);
+  }
 }
 
 double Input::GetMouseDX() {
@@ -108,3 +113,9 @@ void Input::Reset() {
 void Input::Resized() {
   s_framebufferTransition = true;
 }
+
+void Input::SubscribeKeyCallback(int key, KeyCallback callback) {
+  s_keyCallbacks[key].push_back(callback);
+}
+
+void Input::UnsubscribeKeyCallback(int key, KeyCallback callback) {}

@@ -1,7 +1,3 @@
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
@@ -9,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <imgui/imgui.h>
 
 #include "util/Logging.h"
 #include "util/OptionalMacros.h"
@@ -18,6 +15,7 @@
 #include "engine/camera/Camera.h"
 #include "engine/io/Window.h"
 #include "engine/io/Input.h"
+#include "engine/io/Time.h"
 
 #include "world/Chunk.h"
 
@@ -25,9 +23,12 @@ const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
 const float FOV = 70.0f;
 
+bool showDebugInfo = false;
+
 glm::mat4 projection;
 
 int main() {
+  // Logger::showLogsFile();
   Logger::setLogLevel(INFO);
 
   ASSIGN_OR_DIE(Window window, Window::CreateWindow("LuisCraft", SCR_WIDTH, SCR_HEIGHT));
@@ -45,26 +46,39 @@ int main() {
 
   Camera camera({ 0, 63, 16 });
 
-  // SETUP IMGUI
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
-  ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
-  ImGui_ImplOpenGL3_Init("#version 330");
+  Input::SubscribeKeyCallback(GLFW_KEY_F3, [&](int action, int mods) {
+    if (action == GLFW_PRESS) {
+      showDebugInfo = !showDebugInfo;
+    }
+  });
+
+  window.Setup();
+
+  ImFont* font = window.GetImGuiIO().Fonts->AddFontFromFileTTF("res/fonts/Minecraft.ttf", 20.0f, NULL);
+
+  int fps = 0;
+  double lastFPSCheck = -1.0;
+  double currTime = glfwGetTime();
 
   while (window.IsRunning()) {
     window.BeginFrame();
 
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    ImGui::Begin("This is my weird window");
-    ImGui::Text("Hello there");
-    if (ImGui::Button("WOW")) {
-      LOG(INFO) << "THATS COOL";
+    currTime = glfwGetTime();
+    if (currTime - lastFPSCheck > 0.5) {
+      fps = Time::averageFPS;
+      lastFPSCheck = currTime;
     }
-    ImGui::End();
+
+    if (showDebugInfo) {
+      ImGui::PushFont(font);
+      ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
+      bool open_ptr = true;
+      ImGui::SetNextWindowPos({ 0, 0 });
+      ImGui::Begin("Debug information", &open_ptr, windowFlags);
+      ImGui::Text("FPS: %d", fps);
+      ImGui::End();
+      ImGui::PopFont();
+    }
 
     camera.Update(windowHandle);
 
@@ -78,15 +92,8 @@ int main() {
 
     chunk.Draw(shader);
 
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
     window.FinishFrame();
   }
-
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
 
   return 0;
 }

@@ -10,6 +10,9 @@ namespace {
 #define GREEN "\033[32m"
 #define CYAN "\033[36m"
 #define BLUE "\033[34m"
+#define GRAY "\033[90m"
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 } // namespace
 
 enum LogSeverity {
@@ -22,14 +25,22 @@ enum LogSeverity {
 
 class Logger {
 public:
-  static void setLogLevel(LogSeverity level) {
-    currentLogLevel = level;
+  static void showLogsFile(bool value = true) {
+    s_showLogFile = value;
   }
 
-  explicit Logger(LogSeverity severity)
-    : m_severity(severity), m_enabled(severity >= currentLogLevel) {
+  static void setLogLevel(LogSeverity level) {
+    s_currentLogLevel = level;
+  }
+
+  explicit Logger(LogSeverity severity, const char* file, int line)
+    : m_severity(severity), m_enabled(severity >= s_currentLogLevel) {
     if (m_enabled) {
       std::cout << getSeverityLabel(severity) << ' ';
+
+      if (s_showLogFile) {
+        std::cout << GRAY << "(" << file << ':' << line << ") " << RESET;
+      }
     }
   }
 
@@ -51,7 +62,8 @@ public:
 private:
   LogSeverity m_severity;
   bool m_enabled;
-  static LogSeverity currentLogLevel;
+  static LogSeverity s_currentLogLevel;
+  static bool s_showLogFile;
 
   inline std::string getSeverityLabel(LogSeverity severity) {
     switch (severity) {
@@ -65,4 +77,4 @@ private:
   }
 };
 
-#define LOG(severity) Logger(severity)
+#define LOG(severity) Logger(severity, __FILENAME__, __LINE__)

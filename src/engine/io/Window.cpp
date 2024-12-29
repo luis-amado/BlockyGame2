@@ -1,3 +1,6 @@
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -5,6 +8,7 @@
 #include "Input.h"
 #include "util/Logging.h"
 #include "Time.h"
+
 
 void framebufferSizeCallback(GLFWwindow* windowHandle, int width, int height) {
   glViewport(0, 0, width, height);
@@ -18,10 +22,15 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
     return std::nullopt;
   }
 
+  // Get window stats
+  const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  LOG(INFO) << "Window refresh rate: " << mode->refreshRate << " hz";
+
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+  glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
   GLFWwindow* windowHandle = glfwCreateWindow(windowWidth, windowHeight, windowTitle.c_str(), NULL, NULL);
 
@@ -52,11 +61,8 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
 
-  glfwSwapInterval(1);
 
-  // Get window stats
-  const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  LOG(INFO) << "Window refresh rate: " << mode->refreshRate << " hz";
+  glfwSwapInterval(1);
 
   return window;
 }
@@ -68,6 +74,10 @@ Window::~Window() {
   if (m_handle != nullptr) {
     glfwDestroyWindow(m_handle);
     glfwTerminate();
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
   }
 }
 
@@ -91,6 +101,10 @@ GLFWwindow* Window::GetHandle() const {
   return m_handle;
 }
 
+ImGuiIO& Window::GetImGuiIO() const {
+  return *m_io;
+}
+
 glm::ivec2 Window::GetFrame() const {
   glm::ivec2 frame;
   glfwGetFramebufferSize(m_handle, &frame.x, &frame.y);
@@ -107,16 +121,30 @@ bool Window::IsRunning() const {
   return !glfwWindowShouldClose(m_handle);
 }
 
-void Window::Setup() const {
+void Window::Setup() {
   Time::Start();
+
+  // SETUP IMGUI
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  m_io = &ImGui::GetIO(); (void)*m_io;
+  ImGui_ImplGlfw_InitForOpenGL(m_handle, true);
+  ImGui_ImplOpenGL3_Init("#version 330");
 }
 
 void Window::BeginFrame() const {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   Time::Update();
+
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
 }
 
 void Window::FinishFrame() const {
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
   glfwSwapBuffers(m_handle);
   Input::Reset();
   glfwPollEvents();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <imgui/imgui.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <optional>
@@ -18,12 +19,13 @@ public:
 
   void ToggleFullscreen();
   GLFWwindow* GetHandle() const;
+  ImGuiIO& GetImGuiIO() const;
   glm::ivec2 GetFrame() const;
   float GetAspectRatio() const;
   bool IsRunning() const;
 
   // Call this function before the game loop starts
-  void Setup() const;
+  void Setup();
   // Call this function once at the start of each game loop iteration
   void BeginFrame() const;
   // Call this function once at the end of each game loop iteration
@@ -33,6 +35,7 @@ private:
   explicit Window(GLFWwindow* handle, int winWidth, int winHeight);
 
   GLFWwindow* m_handle;
+  ImGuiIO* m_io;
 
   bool m_fullscreen = false;
   int m_prevWinXPos, m_prevWinYPos, m_prevMinWidth, m_prevWinHeight;

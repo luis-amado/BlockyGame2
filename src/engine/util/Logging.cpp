@@ -1,3 +1,4 @@
 #include "Logging.h"
 
-LogSeverity Logger::currentLogLevel = INFO;
+LogSeverity Logger::s_currentLogLevel = INFO;
+bool Logger::s_showLogFile = false;

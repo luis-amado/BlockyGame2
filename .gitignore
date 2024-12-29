@@ -1,4 +1,5 @@
 .vscode/
 build/
 .prettierignore
+*.ini
 *.DS_Store
