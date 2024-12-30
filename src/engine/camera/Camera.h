@@ -14,6 +14,8 @@ public:
   void Update(GLFWwindow* window);
   glm::mat4 CreateViewMatrix() const;
   glm::vec3 GetForwardVector() const;
+  glm::vec3 GetPosition() const;
+  glm::vec2 GetRotation() const;
 
 private:
   glm::vec3 m_position;

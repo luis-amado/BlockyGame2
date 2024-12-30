@@ -25,7 +25,7 @@ enum LogSeverity {
 
 class Logger {
 public:
-  static void showLogsFile(bool value = true) {
+  static void showFiles(bool value = true) {
     s_showLogFile = value;
   }
 

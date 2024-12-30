@@ -80,3 +80,11 @@ glm::vec3 Camera::GetForwardVector() const {
     -std::cosf(glm::radians(m_rotY))
   };
 }
+
+glm::vec3 Camera::GetPosition() const {
+  return m_position;
+}
+
+glm::vec2 Camera::GetRotation() const {
+  return { m_rotX, m_rotY };
+}

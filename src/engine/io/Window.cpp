@@ -9,7 +9,6 @@
 #include "util/Logging.h"
 #include "Time.h"
 
-
 void framebufferSizeCallback(GLFWwindow* windowHandle, int width, int height) {
   glViewport(0, 0, width, height);
   Input::Resized();
@@ -60,7 +59,6 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-
 
   glfwSwapInterval(1);
 

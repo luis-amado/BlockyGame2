@@ -17,18 +17,18 @@
 #include "engine/io/Input.h"
 #include "engine/io/Time.h"
 
-#include "world/Chunk.h"
+#include "world/World.h"
 
 const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
-const float FOV = 70.0f;
+const float FOV = 90.0f;
 
 bool showDebugInfo = false;
 
 glm::mat4 projection;
 
 int main() {
-  // Logger::showLogsFile();
+  // Logger::showFiles();
   Logger::setLogLevel(INFO);
 
   ASSIGN_OR_DIE(Window window, Window::CreateWindow("LuisCraft", SCR_WIDTH, SCR_HEIGHT));
@@ -36,7 +36,7 @@ int main() {
 
   Input::Init(&window);
 
-  Chunk chunk({ 0, 0 });
+  World world;
 
   // texture
   Texture texture("dirt.png");
@@ -44,9 +44,9 @@ int main() {
 
   Shader shader("main");
 
-  Camera camera({ 0, 63, 16 });
+  Camera camera({ 0, 83, 16 });
 
-  Input::SubscribeKeyCallback(GLFW_KEY_F3, [&](int action, int mods) {
+  Input::SubscribeKeyCallback(GLFW_KEY_F3, [](int action, int mods) {
     if (action == GLFW_PRESS) {
       showDebugInfo = !showDebugInfo;
     }
@@ -74,8 +74,24 @@ int main() {
       ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
       bool open_ptr = true;
       ImGui::SetNextWindowPos({ 0, 0 });
+      ImGui::SetNextWindowSize({ 1000, 1000 });
       ImGui::Begin("Debug information", &open_ptr, windowFlags);
       ImGui::Text("FPS: %d", fps);
+      ImGui::Text("XYZ: %.5f / %.5f / %.5f", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+      ImGui::Text("");
+
+      glm::ivec2 chunkCoord = world.GetChunkCoord(floor(camera.GetPosition().x), floor(camera.GetPosition().z));
+      glm::ivec3 localCoords = world.ToLocalCoords(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z));
+
+      ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
+      ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
+
+      ImGui::Text("");
+
+      if (world.GetBlockstateAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z))) {
+        ImGui::Text("Inside Block");
+      }
+
       ImGui::End();
       ImGui::PopFont();
     }
@@ -90,7 +106,7 @@ int main() {
     shader.LoadMatrix4f("projection", projection);
     shader.LoadMatrix4f("view", view);
 
-    chunk.Draw(shader);
+    world.Draw(shader);
 
     window.FinishFrame();
   }

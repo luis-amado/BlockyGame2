@@ -6,17 +6,17 @@
 #include "rendering/Shader.h"
 #include "../voxel/Direction.h"
 #include "../voxel/VoxelData.h"
+#include "World.h"
 
 const int Chunk::SUBCHUNK_HEIGHT = 16;
 const int Chunk::SUBCHUNK_LAYERS = 16;
 const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = SUBCHUNK_HEIGHT * SUBCHUNK_LAYERS;
 
-Chunk::Chunk(glm::ivec2 chunkCoord)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS) {
+Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
+  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
-  GenerateTerrain();
-
+void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
     GenerateMeshForSubchunk(i);
@@ -26,7 +26,7 @@ Chunk::Chunk(glm::ivec2 chunkCoord)
 void Chunk::GenerateTerrain() {
   // For now, I'm filling up the whole terrain with solid blocks
 
-  int terrainHeight = 60;
+  int terrainHeight = 60 + (rand() % 20);
 
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int z = 0; z < CHUNK_WIDTH; z++) {
@@ -98,18 +98,27 @@ void Chunk::Draw(Shader& shader) const {
   }
 }
 
-bool Chunk::GetBlockstateAt(int x, int y, int z) const {
-  if (IsInsideChunk(x, y, z)) {
-    return m_blockstates[PosToIndex(x, y, z)];
+bool Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
+  if (IsInsideChunk(localX, localY, localZ)) {
+    return m_blockstates[PosToIndex(localX, localY, localZ)];
   } else {
-    return false;
+    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
+    return m_world.GetBlockstateAt(globalCoords.x, globalCoords.y, globalCoords.z);
   }
 }
 
-inline int Chunk::PosToIndex(int x, int y, int z) const {
-  return x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_WIDTH;
+inline int Chunk::PosToIndex(int localX, int localY, int localZ) const {
+  return localX + localZ * CHUNK_WIDTH + localY * CHUNK_WIDTH * CHUNK_WIDTH;
 }
 
-bool Chunk::IsInsideChunk(int x, int y, int z) const {
-  return x >= 0 && y >= 0 && z >= 0 && x < CHUNK_WIDTH && y < CHUNK_HEIGHT && z < CHUNK_WIDTH;
+bool Chunk::IsInsideChunk(int localX, int localY, int localZ) const {
+  return localX >= 0 && localY >= 0 && localZ >= 0 && localX < CHUNK_WIDTH && localY < CHUNK_HEIGHT && localZ < CHUNK_WIDTH;
+}
+
+glm::ivec3 Chunk::ToGlobalCoords(int localX, int localY, int localZ) const {
+  return {
+    localX + CHUNK_WIDTH * m_chunkCoord.x,
+    localY,
+    localZ + CHUNK_WIDTH * m_chunkCoord.y
+  };
 }
