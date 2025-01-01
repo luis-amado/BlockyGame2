@@ -39,7 +39,7 @@ int main() {
   World world;
 
   // texture
-  Texture texture("dirt.png");
+  Texture texture = Texture("stone_bricks.png");
   texture.Use();
 
   Shader shader("main");
@@ -78,6 +78,8 @@ int main() {
       ImGui::Begin("Debug information", &open_ptr, windowFlags);
       ImGui::Text("FPS: %d", fps);
       ImGui::Text("XYZ: %.5f / %.5f / %.5f", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+      ImGui::Text("Rot: %.3f %.3f", camera.GetRotation().x, camera.GetRotation().y);
+      ImGui::Text("Speed: %.3f", camera.GetSpeed());
       ImGui::Text("");
 
       glm::ivec2 chunkCoord = world.GetChunkCoord(floor(camera.GetPosition().x), floor(camera.GetPosition().z));
@@ -99,6 +101,7 @@ int main() {
     camera.Update(windowHandle);
 
     glm::mat4 view = camera.CreateViewMatrix();
+
     projection = glm::perspective(glm::radians(FOV), window.GetAspectRatio(), 0.01f, 1000.0f);
 
     shader.Use();

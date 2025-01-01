@@ -16,6 +16,7 @@ public:
   glm::vec3 GetForwardVector() const;
   glm::vec3 GetPosition() const;
   glm::vec2 GetRotation() const;
+  float GetSpeed() const;
 
 private:
   glm::vec3 m_position;

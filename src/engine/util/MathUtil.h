@@ -1,9 +1,15 @@
 #pragma once
 
+#include <cmath>
+
 namespace MathUtil {
 
-int Mod(int a, int b) {
+inline int Mod(int a, int b) {
   return (b + (a % b)) % b;
+}
+
+inline float fMod(float a, float b) {
+  return std::fmodf((b + (std::fmodf(a, b))), b);
 }
 
 } // namespace MathUtil

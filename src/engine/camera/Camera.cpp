@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "../io/Input.h"
 #include "../io/Time.h"
+#include "util/MathUtil.h"
 
 namespace {
 double sensitivity = 0.1;
@@ -49,7 +50,7 @@ void Camera::Update(GLFWwindow* window) {
     m_rotX += Input::GetMouseDY() * sensitivity;
 
     // Normalize camera rotation
-    m_rotY = std::fmodf(m_rotY, 360.0f);
+    m_rotY = MathUtil::fMod(m_rotY, 360.0f);
 
     // Lock max vertical rotation to straight up and straight down
     if (m_rotX > 90.0f) {
@@ -87,4 +88,8 @@ glm::vec3 Camera::GetPosition() const {
 
 glm::vec2 Camera::GetRotation() const {
   return { m_rotX, m_rotY };
+}
+
+float Camera::GetSpeed() const {
+  return m_speed;
 }
