@@ -37,6 +37,7 @@ int main() {
   Input::Init(&window);
 
   World world;
+  world.Start();
 
   // texture
   Texture texture = Texture("stone_bricks.png");
@@ -60,8 +61,14 @@ int main() {
   double lastFPSCheck = -1.0;
   double currTime = glfwGetTime();
 
+  bool updateWorld = true;
+
   while (window.IsRunning()) {
     window.BeginFrame();
+
+    if (updateWorld) {
+      world.Update(camera.GetPosition());
+    }
 
     currTime = glfwGetTime();
     if (currTime - lastFPSCheck > 0.5) {
@@ -87,6 +94,14 @@ int main() {
 
       ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
       ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
+
+      ImGui::Text("");
+
+      ImGui::Text("Terrain queue: %d", world.GetChunksToGenerateTerrainSize());
+      ImGui::Text("Mesh queue: %d", world.GetChunksToGenerateMeshSize());
+      if (ImGui::Button(updateWorld ? "Stop updating world" : "Continue updating world")) {
+        updateWorld = !updateWorld;
+      }
 
       ImGui::Text("");
 

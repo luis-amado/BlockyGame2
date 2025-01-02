@@ -11,16 +11,31 @@
 const int Chunk::SUBCHUNK_HEIGHT = 16;
 const int Chunk::SUBCHUNK_LAYERS = 16;
 const int Chunk::CHUNK_WIDTH = 16;
-const int Chunk::CHUNK_HEIGHT = SUBCHUNK_HEIGHT * SUBCHUNK_LAYERS;
+const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_subchunkMeshesData(SUBCHUNK_LAYERS), m_world(world) {}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
     GenerateMeshForSubchunk(i);
   }
+
+  m_generatedMesh = true;
+}
+
+void Chunk::ApplyMesh() {
+  for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
+    std::vector<float>& vertices = m_subchunkMeshesData[i].vertices;
+    std::vector<unsigned int>& indices = m_subchunkMeshesData[i].indices;
+
+    m_subchunkMeshes[i].SetData(vertices.data(), vertices.size(), indices.data(), indices.size());
+  }
+
+  m_subchunkMeshesData.resize(SUBCHUNK_LAYERS, MeshData());
+
+  m_appliedMesh = true;
 }
 
 void Chunk::GenerateTerrain() {
@@ -39,13 +54,15 @@ void Chunk::GenerateTerrain() {
       }
     }
   }
+
+  m_generatedTerrain = true;
 }
 
 void Chunk::GenerateMeshForSubchunk(int i) {
   // Need to generate a list of vertices and indices
 
-  std::vector<float> vertices;
-  std::vector<unsigned int> indices;
+  std::vector<float>& vertices = m_subchunkMeshesData[i].vertices;
+  std::vector<unsigned int>& indices = m_subchunkMeshesData[i].indices;
 
   int vertexCount = 0;
 
@@ -79,10 +96,11 @@ void Chunk::GenerateMeshForSubchunk(int i) {
     }
   }
 
-  m_subchunkMeshes[i].SetData(vertices.data(), vertices.size(), indices.data(), indices.size());
 }
 
 void Chunk::Draw(Shader& shader) const {
+  if (!m_active) return;
+
   glm::mat4 model(1.0f);
   model = glm::translate(model, { m_chunkCoord.x * CHUNK_WIDTH, 0, m_chunkCoord.y * CHUNK_WIDTH });
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
@@ -90,7 +108,7 @@ void Chunk::Draw(Shader& shader) const {
       shader.LoadMatrix4f("model", model);
       m_subchunkMeshes[i].Draw();
     } else {
-      LOG(WARN) << "Tried to draw subchunk at (" << m_chunkCoord.x << ", " << i << ", " << m_chunkCoord.y << ") before generating mesh";
+      // LOG(WARN) << "Tried to draw subchunk at (" << m_chunkCoord.x << ", " << i << ", " << m_chunkCoord.y << ") before generating mesh";
     }
 
     // Translate the model upwards
@@ -105,6 +123,26 @@ bool Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
     glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
     return m_world.GetBlockstateAt(globalCoords.x, globalCoords.y, globalCoords.z);
   }
+}
+
+void Chunk::SetActive(bool value) {
+  m_active = value;
+}
+
+bool Chunk::HasAppliedMesh() const {
+  return m_appliedMesh;
+}
+
+bool Chunk::HasGeneratedTerrain() const {
+  return m_generatedTerrain;
+}
+
+bool Chunk::HasGeneratedMesh() const {
+  return m_generatedMesh;
+}
+
+glm::ivec2 Chunk::GetChunkCoord() const {
+  return m_chunkCoord;
 }
 
 inline int Chunk::PosToIndex(int localX, int localY, int localZ) const {
