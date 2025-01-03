@@ -7,8 +7,9 @@
 #include "util/MathUtil.h"
 #include "util/Logging.h"
 
+#include "../debug/DebugSettings.h"
+
 namespace {
-const int RENDER_DISTANCE = 12;
 const int WORKER_COUNT = 3;
 } // namespace
 
@@ -80,28 +81,27 @@ World::~World() {
   m_chunksToGenerateTerrain.stop();
   m_chunksToGenerateMesh.stop();
 
-  m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
-    delete chunk;
-  });
-
   for (auto& thread : m_workerThreads) {
     if (thread.joinable()) {
       thread.join();
     }
   }
+
+  m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
+    delete chunk;
+  });
 }
 
 void World::Start() {
   // Generate the worker threads
-  auto sharedWorld = std::shared_ptr<World>(this);
 
   for (int i = 0; i < WORKER_COUNT; i++) {
-    m_workerThreads.push_back(std::thread([sharedWorld, i]() {
-      chunkTerrainGeneratorWorker(*sharedWorld, i);
+    m_workerThreads.push_back(std::thread([this, i]() {
+      chunkTerrainGeneratorWorker(*this, i);
     }));
 
-    m_workerThreads.push_back(std::thread([sharedWorld, i]() {
-      chunkMeshGeneratorWorker(*sharedWorld, i);
+    m_workerThreads.push_back(std::thread([this, i]() {
+      chunkMeshGeneratorWorker(*this, i);
     }));
   }
 
@@ -115,8 +115,10 @@ void World::Update(glm::vec3 playerPosition) {
     chunk->SetActive(false);
   });
 
-  for (int x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
-    for (int z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+  int renderDistance = DebugSettings::instance.renderDistance;
+
+  for (int x = -renderDistance; x <= renderDistance; x++) {
+    for (int z = -renderDistance; z <= renderDistance; z++) {
       glm::ivec2 chunkCoord(x, z);
       chunkCoord += playerChunk;
 

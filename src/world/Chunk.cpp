@@ -14,10 +14,13 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_subchunkMeshesData(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
+
+  m_subchunkMeshesData.reserve(SUBCHUNK_LAYERS);
+
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
     GenerateMeshForSubchunk(i);
   }
@@ -33,7 +36,7 @@ void Chunk::ApplyMesh() {
     m_subchunkMeshes[i].SetData(vertices.data(), vertices.size(), indices.data(), indices.size());
   }
 
-  m_subchunkMeshesData.resize(SUBCHUNK_LAYERS, MeshData());
+  m_subchunkMeshesData.clear();
 
   m_appliedMesh = true;
 }
@@ -99,7 +102,7 @@ void Chunk::GenerateMeshForSubchunk(int i) {
 }
 
 void Chunk::Draw(Shader& shader) const {
-  if (!m_active) return;
+  if (!m_active || !m_appliedMesh) return;
 
   glm::mat4 model(1.0f);
   model = glm::translate(model, { m_chunkCoord.x * CHUNK_WIDTH, 0, m_chunkCoord.y * CHUNK_WIDTH });
@@ -108,7 +111,7 @@ void Chunk::Draw(Shader& shader) const {
       shader.LoadMatrix4f("model", model);
       m_subchunkMeshes[i].Draw();
     } else {
-      // LOG(WARN) << "Tried to draw subchunk at (" << m_chunkCoord.x << ", " << i << ", " << m_chunkCoord.y << ") before generating mesh";
+      LOG(WARN) << "Tried to draw subchunk at (" << m_chunkCoord.x << ", " << i << ", " << m_chunkCoord.y << ") before generating mesh";
     }
 
     // Translate the model upwards

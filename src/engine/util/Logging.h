@@ -37,7 +37,7 @@ public:
   explicit Logger(LogSeverity severity, const char* file, int line)
     : m_severity(severity), m_enabled(severity >= s_currentLogLevel) {
     if (m_enabled) {
-      std::lock_guard<std::mutex> lock(s_mutex);
+      s_mutex.lock();
       std::cout << getSeverityLabel(severity) << ' ';
 
       if (s_showLogFile) {
@@ -49,7 +49,6 @@ public:
   template <typename T>
   Logger& operator<<(const T& value) {
     if (m_enabled) {
-      std::lock_guard<std::mutex> lock(s_mutex);
       std::cout << value;
     }
     return *this;
@@ -57,9 +56,9 @@ public:
 
   ~Logger() {
     if (m_enabled) {
-      std::lock_guard<std::mutex> lock(s_mutex);
       std::cout << std::endl;
       if (m_severity == FATAL) abort();
+      s_mutex.unlock();
     }
   }
 
