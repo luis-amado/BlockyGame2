@@ -37,16 +37,14 @@ int main() {
 
   Input::Init(&window);
 
-  World world;
+  Camera camera({ 0, 83, 16 });
+  World world(camera);
   world.Start();
 
   // texture
   Texture texture = Texture("stone_bricks.png");
-  texture.Use();
 
   Shader shader("main");
-
-  Camera camera({ 0, 83, 16 });
 
   Input::SubscribeKeyCallback(GLFW_KEY_F3, [](int action, int mods) {
     if (action == GLFW_PRESS) {
@@ -61,7 +59,7 @@ int main() {
     window.BeginFrame();
 
     if (DebugSettings::instance.updateWorld) {
-      world.Update(camera.GetPosition());
+      world.Update();
     }
 
     camera.Update(windowHandle);
@@ -73,6 +71,7 @@ int main() {
     shader.LoadMatrix4f("projection", projection);
     shader.LoadMatrix4f("view", view);
 
+    texture.Use();
     world.Draw(shader);
 
     DebugInformation::ShowIfActive(world, camera);

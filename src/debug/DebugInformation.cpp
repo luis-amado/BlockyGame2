@@ -13,6 +13,10 @@
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 
+#include "util/Noise.h"
+#include "rendering/Texture.h"
+#include <optional>
+
 bool DebugInformation::s_showDebugInformation = false;
 bool DebugInformation::s_showDebugPanel = false;
 ImFont* DebugInformation::s_font = nullptr;
@@ -20,7 +24,43 @@ int DebugInformation::s_fps = 0;
 double DebugInformation::s_lastFPSCheckTime = -1.0;
 double DebugInformation::s_currTime = glfwGetTime();
 
-void DebugInformation::ShowIfActive(const World& world, const Camera& camera) {
+namespace {
+
+std::vector<unsigned char> CreateNoiseImage(int width, int height, double noiseScale, double offsetX, double offsetY, int octaves, double persistence, double lacunarity) {
+  std::vector<unsigned char> data(width * height * 4);
+
+  for (int yi = 0; yi < height; yi++) {
+    double y = yi;
+    for (int xi = 0; xi < width; xi++) {
+      double x = xi;
+      double val = Noise::Noise2D(x, y, offsetX, offsetY, noiseScale, octaves, persistence, lacunarity);
+      int mappedVal = floor(((val + 1) / 2.0) * 255);
+      data[(xi + yi * width) * 4] = mappedVal;
+      data[(xi + yi * width) * 4 + 1] = mappedVal;
+      data[(xi + yi * width) * 4 + 2] = mappedVal;
+      data[(xi + yi * width) * 4 + 3] = 255;
+    }
+  }
+
+  return data;
+}
+
+int capturedNoiseWidth, capturedNoiseHeight;
+
+int noiseWidth = 400;
+int noiseHeight = 400;
+double noiseScale = 10.0;
+float offset[] = { 0.0f, 0.0f };
+int octaves = 1;
+double persistence = 1.0;
+double lacunarity = 1.0;
+
+bool autoUpdate = false;
+std::optional<Texture> noiseTexture = std::nullopt;
+
+} // namespace
+
+void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
   s_currTime = glfwGetTime();
   if (s_currTime - s_lastFPSCheckTime > 0.5) {
@@ -116,10 +156,63 @@ void DebugInformation::ShowIfActive(const World& world, const Camera& camera) {
       if (ImGui::Button(DebugSettings::instance.updateWorld ? "Stop updating world" : "Continue updating world")) {
         DebugSettings::instance.updateWorld = !DebugSettings::instance.updateWorld;
       }
+
+      ImGui::Text("");
+      ImGui::InputInt("Terrain workers", &DebugSettings::instance.terrainWorkerCount);
+      ImGui::InputInt("Mesh workers", &DebugSettings::instance.meshWorkerCount);
+
+      if (ImGui::Button("Reset workers")) {
+        world.ResetWorkers();
+      }
       ImGui::EndTabItem();
     }
 
     if (ImGui::BeginTabItem("Terrain generation")) {
+      ImGui::InputDouble("Noise Scale", &DebugSettings::instance.noiseScale);
+      ImGui::InputFloat2("Noise offset", DebugSettings::instance.noiseOffsets);
+      ImGui::Text("");
+      ImGui::InputInt("Octaves", &DebugSettings::instance.octaves);
+      ImGui::InputDouble("Persistence", &DebugSettings::instance.persistence);
+      ImGui::InputDouble("Lacunarity", &DebugSettings::instance.lacunarity);
+      ImGui::Text("");
+      ImGui::InputInt("Base terrain height", &DebugSettings::instance.baseTerrainHeight);
+      ImGui::InputInt2("Terrain Range", DebugSettings::instance.terrainRange);
+
+      ImGui::Text("");
+      if (ImGui::Button("Regenerate world")) {
+        world.Regenerate();
+      }
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Noise Testing")) {
+
+      ImGui::Columns(2);
+
+      ImGui::InputInt("Width", &noiseWidth);
+      ImGui::InputInt("Height", &noiseHeight);
+      ImGui::Text("");
+      ImGui::Text("Noise Settings");
+      ImGui::InputDouble("Scale", &noiseScale);
+      ImGui::InputFloat2("Offset", offset);
+      ImGui::InputInt("Octaves", &octaves);
+      ImGui::InputDouble("Persistence", &persistence);
+      ImGui::InputDouble("Lacunarity", &lacunarity);
+      ImGui::Text("");
+      ImGui::Checkbox("Auto update", &autoUpdate);
+      if (autoUpdate || ImGui::Button("Create Noise Image")) {
+        capturedNoiseWidth = noiseWidth;
+        capturedNoiseHeight = noiseHeight;
+        std::vector<unsigned char> image_data = CreateNoiseImage(capturedNoiseWidth, capturedNoiseHeight, noiseScale, offset[0], offset[1], octaves, persistence, lacunarity);
+        noiseTexture = Texture(capturedNoiseWidth, capturedNoiseHeight, image_data.data());
+      }
+
+      ImGui::NextColumn();
+      if (noiseTexture.has_value()) {
+        ImGui::Image((ImTextureID)(intptr_t)noiseTexture->GetID(), { (float)capturedNoiseWidth, (float)capturedNoiseHeight });
+      }
+
       ImGui::EndTabItem();
     }
 

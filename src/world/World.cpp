@@ -9,10 +9,6 @@
 
 #include "../debug/DebugSettings.h"
 
-namespace {
-const int WORKER_COUNT = 3;
-} // namespace
-
 void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
   // TODO: Remove duplicated from the chunk generation worker
@@ -22,7 +18,9 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
     Chunk* chunk;
     if (!world.m_chunksToGenerateTerrain.pop(chunk)) break;
 
-    chunk->GenerateTerrain();
+    if (!chunk->HasGeneratedTerrain()) {
+      chunk->GenerateTerrain();
+    }
 
     // Check if a neighboring chunk, or this one, is ready for meshing
     glm::ivec2 centerCoord = chunk->GetChunkCoord();
@@ -66,6 +64,19 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     Chunk* chunk;
     if (!world.m_chunksToGenerateMesh.pop(chunk)) break;
 
+
+    glm::vec3 cameraPosition = world.m_camera.GetPosition();
+    glm::ivec2 cameraChunkCoord = world.GetChunkCoord(MathUtil::FloorToInt(cameraPosition.x), MathUtil::FloorToInt(cameraPosition.z));
+    glm::ivec2 chunkCoord = chunk->GetChunkCoord();
+
+    // Check if chunk is too far away and if so, skip generating the mesh and instead generate it later if it's needed
+    if (std::abs(chunkCoord.x - cameraChunkCoord.x) + std::abs(chunkCoord.y - cameraChunkCoord.y) > DebugSettings::instance.renderDistance * 2) {
+      chunk->a_queuedTerrain = false;
+      chunk->a_queuedMesh = false;
+      chunk->m_queuedGeneration = false;
+      continue;
+    }
+
     chunk->GenerateMesh();
     world.m_chunksToApplyMesh.push(chunk);
   }
@@ -73,11 +84,33 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
   LOG(INFO) << "Chunk mesh generator worker #" << workerId << " stopped";
 }
 
-World::World() {}
+World::World(const Camera& camera) : m_camera(camera) {}
 
 World::~World() {
+  Stop();
+}
+
+void World::Start() {
+  // Make sure the work queues are active
+  m_chunksToGenerateMesh.start();
+  m_chunksToGenerateTerrain.start();
+
+  // Generate the worker threads
+  for (int i = 0; i < DebugSettings::instance.terrainWorkerCount; i++) {
+    m_workerThreads.push_back(std::thread([this, i]() {
+      chunkTerrainGeneratorWorker(*this, i);
+    }));
+  }
+  for (int i = 0; i < DebugSettings::instance.meshWorkerCount; i++) {
+    m_workerThreads.push_back(std::thread([this, i]() {
+      chunkMeshGeneratorWorker(*this, i);
+    }));
+  }
+
+}
+
+void World::Stop() {
   // Stop the worker threads
-  m_chunkGenerationQueue.stop();
   m_chunksToGenerateTerrain.stop();
   m_chunksToGenerateMesh.stop();
 
@@ -86,29 +119,36 @@ World::~World() {
       thread.join();
     }
   }
+  m_workerThreads.clear();
+
+  m_chunkGenerationQueue = {};
+  m_chunksToGenerateTerrain.clear();
+  m_chunksToGenerateMesh.clear();
+  m_chunksToApplyMesh.clear();
 
   m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
     delete chunk;
   });
+  m_chunks.clear();
 }
 
-void World::Start() {
-  // Generate the worker threads
+void World::ResetWorkers() {
+  m_chunksToGenerateTerrain.stop();
+  m_chunksToGenerateMesh.stop();
 
-  for (int i = 0; i < WORKER_COUNT; i++) {
-    m_workerThreads.push_back(std::thread([this, i]() {
-      chunkTerrainGeneratorWorker(*this, i);
-    }));
-
-    m_workerThreads.push_back(std::thread([this, i]() {
-      chunkMeshGeneratorWorker(*this, i);
-    }));
+  for (auto& thread : m_workerThreads) {
+    if (thread.joinable()) {
+      thread.join();
+    }
   }
+  m_workerThreads.clear();
 
+  Start();
 }
 
-void World::Update(glm::vec3 playerPosition) {
+void World::Update() {
 
+  glm::ivec3 playerPosition = m_camera.GetPosition();
   glm::ivec2 playerChunk = GetChunkCoord((int)floor(playerPosition.x), (int)floor(playerPosition.z));
 
   m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
@@ -126,10 +166,10 @@ void World::Update(glm::vec3 playerPosition) {
       chunk->SetActive(true);
 
       // Queue the chunk for generation if it hasnt been already
-      // TODO: a_queuedGeneration does not need to be atomic anymore
-      if (!chunk->a_queuedGeneration.exchange(true)) {
+      if (!chunk->m_queuedGeneration) {
         int distance = std::abs(x) + std::abs(z);
         m_chunkGenerationQueue.push({ distance, chunk });
+        chunk->m_queuedGeneration = true;
       }
     }
   }
@@ -138,8 +178,8 @@ void World::Update(glm::vec3 playerPosition) {
   while (!m_chunkGenerationQueue.empty()) {
     // Chunks that need to be generated in order to make the mesh for the chunk at 0, 0
     static glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
-    DistanceToChunk distanceToChunk;
-    if (!m_chunkGenerationQueue.pop(distanceToChunk)) break;
+    DistanceToChunk distanceToChunk = m_chunkGenerationQueue.top();
+    m_chunkGenerationQueue.pop();
 
     Chunk* centerChunk = distanceToChunk.second;
     glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
@@ -161,6 +201,12 @@ void World::Update(glm::vec3 playerPosition) {
 
     chunk->ApplyMesh();
   }
+}
+
+void World::Regenerate() {
+  // Reset all known information about the world
+  Stop();
+  Start();
 }
 
 int World::GetChunksToGenerateTerrainSize() const {

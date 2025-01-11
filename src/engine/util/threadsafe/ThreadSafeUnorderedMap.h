@@ -37,6 +37,14 @@ public:
     m_map.clear();
   }
 
+  void cleanAndClear(const std::function<void(const Key&, const Value&)>& cleanFunc) {
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+    for (const auto& [key, value] : m_map) {
+      cleanFunc(key, value);
+    }
+    m_map.clear();
+  }
+
   size_t size() const {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     return m_map.size();

@@ -25,24 +25,28 @@ void Camera::Update(GLFWwindow* window) {
   glm::vec3 forward = GetForwardVector();
   glm::vec3 right = glm::cross(forward, { 0, 1, 0 });
 
+  glm::vec3 newPosition = m_position.Get();
+
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-    m_position -= right * (float)(m_speed * deltaTime);
+    newPosition -= right * (float)(m_speed * deltaTime);
   }
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    m_position += right * (float)(m_speed * deltaTime);
+    newPosition += right * (float)(m_speed * deltaTime);
   }
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    m_position += forward * (float)(m_speed * deltaTime);
+    newPosition += forward * (float)(m_speed * deltaTime);
   }
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    m_position -= forward * (float)(m_speed * deltaTime);
+    newPosition -= forward * (float)(m_speed * deltaTime);
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-    m_position.y -= m_speed * deltaTime;
+    newPosition.y -= m_speed * deltaTime;
   }
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-    m_position.y += m_speed * deltaTime;
+    newPosition.y += m_speed * deltaTime;
   }
+
+  m_position.Set(newPosition);
 
   // Camera rotation
   if (!Input::IsCursorShown()) {
@@ -69,7 +73,7 @@ glm::mat4 Camera::CreateViewMatrix() const {
   view = glm::rotate(view, glm::radians(m_rotX), { 1, 0, 0 });
   view = glm::rotate(view, glm::radians(m_rotY), { 0, 1, 0 });
   // Translate
-  view = glm::translate(view, -m_position);
+  view = glm::translate(view, -m_position.Get());
 
   return view;
 }
@@ -83,7 +87,7 @@ glm::vec3 Camera::GetForwardVector() const {
 }
 
 glm::vec3 Camera::GetPosition() const {
-  return m_position;
+  return m_position.Get();
 }
 
 glm::vec2 Camera::GetRotation() const {

@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include "util/Logging.h"
+#include "util/threadsafe/ThreadSafeWrapper.h"
 
 class Camera {
 public:
@@ -19,7 +20,7 @@ public:
   float GetSpeed() const;
 
 private:
-  glm::vec3 m_position;
+  ThreadSafeWrapper<glm::vec3> m_position;
   float m_rotX, m_rotY;
   float m_speed = 1.0f;
 };

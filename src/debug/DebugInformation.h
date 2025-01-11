@@ -8,7 +8,7 @@
 class DebugInformation {
 
 public:
-  static void ShowIfActive(const World& world, const Camera& camera);
+  static void ShowIfActive(World& world, const Camera& camera);
   static void Setup(const Window& window);
   static void Toggle();
 

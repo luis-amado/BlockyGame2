@@ -42,7 +42,8 @@ public:
   static const int SUBCHUNK_HEIGHT;
   static const int SUBCHUNK_LAYERS;
 
-  std::atomic<bool> a_queuedGeneration = false;
+  bool m_queuedGeneration = false;
+
   std::atomic<bool> a_queuedTerrain = false;
   std::atomic<bool> a_queuedMesh = false;
 

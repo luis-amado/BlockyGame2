@@ -3,13 +3,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "util/Logging.h"
+#include "util/Noise.h"
+#include "util/MathUtil.h"
 #include "rendering/Shader.h"
 #include "../voxel/Direction.h"
 #include "../voxel/VoxelData.h"
 #include "World.h"
+#include "../debug/DebugSettings.h"
 
-const int Chunk::SUBCHUNK_HEIGHT = 16;
-const int Chunk::SUBCHUNK_LAYERS = 16;
+const int Chunk::SUBCHUNK_HEIGHT = 256;
+const int Chunk::SUBCHUNK_LAYERS = 1;
 const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
@@ -42,12 +45,17 @@ void Chunk::ApplyMesh() {
 }
 
 void Chunk::GenerateTerrain() {
-  // For now, I'm filling up the whole terrain with solid blocks
 
-  int terrainHeight = 60 + (rand() % 20);
+  int x0 = m_chunkCoord.x * CHUNK_WIDTH;
+  int z0 = m_chunkCoord.y * CHUNK_WIDTH;
+
+  const DebugSettings& settings = DebugSettings::instance;
 
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int z = 0; z < CHUNK_WIDTH; z++) {
+      double noiseValue = Noise::Noise2D(x0 + x, z0 + z, settings.noiseOffsets[0], settings.noiseOffsets[1], settings.noiseScale, settings.octaves, settings.persistence, settings.lacunarity);
+      int terrainDifference = MathUtil::FloorToInt(MathUtil::Map(noiseValue, -1, 1, settings.terrainRange[0], settings.terrainRange[1]));
+      int terrainHeight = settings.baseTerrainHeight + terrainDifference;
       for (int y = 0; y < CHUNK_HEIGHT; y++) {
         if (y <= terrainHeight) {
           m_blockstates[PosToIndex(x, y, z)] = true;
@@ -102,6 +110,7 @@ void Chunk::GenerateMeshForSubchunk(int i) {
 }
 
 void Chunk::Draw(Shader& shader) const {
+  // TODO: Use some sort of frustum culling to prevent non-visible chunks from being drawn
   if (!m_active || !m_appliedMesh) return;
 
   glm::mat4 model(1.0f);

@@ -19,7 +19,6 @@ Texture::Texture(const std::string& fileName) {
   stbi_set_flip_vertically_on_load(true);
   std::string filePath = "res/textures/" + fileName;
   unsigned char* image_data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
-  LOG(INFO) << "Channels: " << channels;
 
   if (image_data != nullptr) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
@@ -32,13 +31,41 @@ Texture::Texture(const std::string& fileName) {
   stbi_image_free(image_data);
 }
 
+Texture::Texture(int width, int height, unsigned char* image_data) {
+  glGenTextures(1, &m_textureID);
+  glBindTexture(GL_TEXTURE_2D, m_textureID);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+}
+
 Texture::~Texture() {
   if (m_textureID != 0) {
     glDeleteTextures(1, &m_textureID);
   }
 }
 
+Texture::Texture(Texture&& other) {
+  m_textureID = other.m_textureID;
+  other.m_textureID = 0;
+}
+
+Texture& Texture::operator=(Texture&& other) {
+  glDeleteTextures(1, &m_textureID);
+  m_textureID = other.m_textureID;
+  other.m_textureID = 0;
+  return *this;
+}
+
 void Texture::Use(unsigned int slot) const {
   glActiveTexture(GL_TEXTURE0 + slot);
   glBindTexture(GL_TEXTURE_2D, m_textureID);
+}
+
+unsigned int Texture::GetID() const {
+  return m_textureID;
 }

@@ -28,7 +28,7 @@ public:
     std::unique_lock<std::mutex> lock(m_mutex);
     m_condition.wait(lock, [this]() { return !m_queue.empty() || m_stop; });
 
-    if (m_queue.empty()) {
+    if (m_queue.empty() || m_stop) {
       return false;
     }
 
