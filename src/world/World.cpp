@@ -9,10 +9,11 @@
 
 #include "../debug/DebugSettings.h"
 
-void chunkTerrainGeneratorWorker(World& world, int workerId) {
+namespace {
+glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
+} // namespace
 
-  // TODO: Remove duplicated from the chunk generation worker
-  static glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
+void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
   while (true) {
     Chunk* chunk;
@@ -159,6 +160,12 @@ void World::Update() {
 
   for (int x = -renderDistance; x <= renderDistance; x++) {
     for (int z = -renderDistance; z <= renderDistance; z++) {
+
+      // Filter out chunks that are outside the render distance "circle"
+      if (x * x + z * z > renderDistance * renderDistance) {
+        continue;
+      }
+
       glm::ivec2 chunkCoord(x, z);
       chunkCoord += playerChunk;
 
@@ -177,7 +184,6 @@ void World::Update() {
   // Go through the chunks that need to be generated
   while (!m_chunkGenerationQueue.empty()) {
     // Chunks that need to be generated in order to make the mesh for the chunk at 0, 0
-    static glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
     DistanceToChunk distanceToChunk = m_chunkGenerationQueue.top();
     m_chunkGenerationQueue.pop();
 
