@@ -110,12 +110,12 @@ void Chunk::GenerateTerrain() {
         }
 
         // CAVE PASS
-        // if (blockstate != Blocks::AIR && y >= 2) {
-        //   double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
-        //   if (caveNoiseValue < settings.caveThreshold) {
-        //     blockstate = Blocks::CAVE_AIR;
-        //   }
-        // }
+        if (blockstate != Blocks::AIR && y >= 2) {
+          double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
+          if (caveNoiseValue < settings.caveThreshold) {
+            blockstate = Blocks::CAVE_AIR;
+          }
+        }
 
         m_blockstates[PosToIndex(x, y, z)] = blockstate;
       }
