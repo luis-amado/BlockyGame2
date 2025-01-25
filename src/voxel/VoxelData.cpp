@@ -3,7 +3,7 @@
 #include "../world/Chunk.h"
 #include "../init/Blocks.h"
 
-std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, const Chunk& chunk, Direction face, const Block& block) {
+std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk, Direction face, const Block& block) {
   float x0 = x, x1 = x + 1;
   float y0 = y, y1 = y + 1;
   float z0 = z, z1 = z + 1;

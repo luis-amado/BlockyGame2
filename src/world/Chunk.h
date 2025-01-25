@@ -28,9 +28,9 @@ public:
   void ApplyMesh();
 
   void Draw(Shader& shader) const;
-  char GetBlockstateAt(int localX, int localY, int localZ) const;
-  char GetLightAt(int localX, int localY, int localZ) const;
-  float GetFixedLightAt(int localX, int localY, int localZ) const;
+  char GetBlockstateAt(int localX, int localY, int localZ);
+  char GetLightAt(int localX, int localY, int localZ);
+  float GetFixedLightAt(int localX, int localY, int localZ);
   void SetLightAt(int localX, int localY, int localZ, char value);
 
   void SetActive(bool value);
@@ -54,6 +54,7 @@ public:
   std::atomic<bool> a_queuedLighting = false;
 
 private:
+  std::vector<Chunk*> m_neighbors;
   glm::ivec2 m_chunkCoord;
   std::vector<char> m_blockstates;
   std::vector<char> m_lights;
@@ -70,6 +71,9 @@ private:
 
   void GenerateMeshForSubchunk(int i);
   void LightDFS(int x, int y, int z, char value);
+  int GetNeighborIndex(int localX, int localZ) const;
+  Chunk* GetNeighbor(int localX, int localZ);
+  glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
   bool IsInsideChunk(int localX, int localY, int localZ) const;

@@ -6,7 +6,7 @@ in float light;
 
 uniform sampler2D tex;
 
-float ambientLighting = 0.1;
+float ambientLighting = 0.2;
 
 void main() {
   float lightLevel = (light * (1 - ambientLighting)) + ambientLighting;

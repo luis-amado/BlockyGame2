@@ -38,6 +38,8 @@ public:
   glm::ivec2 GetChunkCoord(int globalX, int globalZ) const;
   glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ) const;
 
+  Chunk* GetChunkAtBlockPos(int globalX, int globalZ) const;
+
   void Draw(Shader& shader) const;
 private:
   ThreadSafeUnorderedMap<glm::ivec2, Chunk*, IVec2Hash, IVec2Equal> m_chunks;

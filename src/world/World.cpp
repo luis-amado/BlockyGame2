@@ -364,3 +364,7 @@ glm::ivec3 World::ToLocalCoords(int globalX, int globalY, int globalZ) const {
     MathUtil::Mod(globalZ, Chunk::CHUNK_WIDTH)
   };
 }
+
+Chunk* World::GetChunkAtBlockPos(int globalX, int globalZ) const {
+  return m_chunks.get(GetChunkCoord(globalX, globalZ)).value();
+}

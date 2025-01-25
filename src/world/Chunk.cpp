@@ -20,7 +20,7 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_neighbors(8, nullptr), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
@@ -51,7 +51,6 @@ void Chunk::PropagateLighting() {
 }
 
 void Chunk::LightDFS(int x, int y, int z, char value) {
-  if (Block::FromBlockstate(GetBlockstateAt(x, y, z)).IsSolid()) return;
   if (value <= 0) return;
 
   SetLightAt(x, y, z, value);
@@ -61,9 +60,41 @@ void Chunk::LightDFS(int x, int y, int z, char value) {
     int newX = x + offset.x;
     int newY = y + offset.y;
     int newZ = z + offset.z;
-    if (newY < 0 || newY >= CHUNK_HEIGHT || GetLightAt(newX, newY, newZ) >= value - 1) continue;
+    if (newY < 0 || newY >= CHUNK_HEIGHT || GetLightAt(newX, newY, newZ) >= value - 1 || Block::FromBlockstate(GetBlockstateAt(newX, newY, newZ)).IsSolid()) continue;
 
     LightDFS(newX, newY, newZ, value - 1);
+  }
+}
+
+int Chunk::GetNeighborIndex(int localX, int localZ) const {
+  if (localX < 0 && localZ < 0) {
+    return 0;
+  } else if (localX >= 0 && localX < CHUNK_WIDTH && localZ < 0) {
+    return 1;
+  } else if (localX >= CHUNK_WIDTH && localZ < 0) {
+    return 2;
+  } else if (localX >= CHUNK_WIDTH && localZ >= 0 && localZ < CHUNK_WIDTH) {
+    return 3;
+  } else if (localX >= CHUNK_WIDTH && localZ >= CHUNK_WIDTH) {
+    return 4;
+  } else if (localX >= 0 && localX < CHUNK_WIDTH && localZ >= CHUNK_WIDTH) {
+    return 5;
+  } else if (localX < 0 && localZ >= CHUNK_WIDTH) {
+    return 6;
+  } else { // localX < 0 && localZ >= 0 && localZ < CHUNK_WIDTH
+    return 7;
+  }
+}
+
+Chunk* Chunk::GetNeighbor(int localX, int localZ) {
+  int neighborIndex = GetNeighborIndex(localX, localZ);
+  if (m_neighbors[neighborIndex] != nullptr) {
+    return m_neighbors[neighborIndex];
+  } else {
+    glm::ivec3 globalCoords = ToGlobalCoords(localX, 0, localZ);
+    Chunk* neighbor = m_world.GetChunkAtBlockPos(globalCoords.x, globalCoords.z);
+    m_neighbors[neighborIndex] = neighbor;
+    return neighbor;
   }
 }
 
@@ -196,25 +227,29 @@ void Chunk::Draw(Shader& shader) const {
   }
 }
 
-char Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
+char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
     return m_blockstates[PosToIndex(localX, localY, localZ)];
-  } else {
-    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
-    return m_world.GetBlockstateAt(globalCoords.x, globalCoords.y, globalCoords.z);
+  } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
+    return neighbor->GetBlockstateAt(neighborCoords.x, neighborCoords.y, neighborCoords.z);
   }
+  return Blocks::VOID_AIR;
 }
 
-char Chunk::GetLightAt(int localX, int localY, int localZ) const {
+char Chunk::GetLightAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
     return m_lights[PosToIndex(localX, localY, localZ)];
-  } else {
-    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
-    return m_world.GetLightAt(globalCoords.x, globalCoords.y, globalCoords.z);
+  } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
+    return neighbor->GetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z);
   }
+  return 0;
 }
 
-float Chunk::GetFixedLightAt(int localX, int localY, int localZ) const {
+float Chunk::GetFixedLightAt(int localX, int localY, int localZ) {
   float light = GetLightAt(localX, localY, localZ) / 15.0f;
   return light;
 }
@@ -222,9 +257,10 @@ float Chunk::GetFixedLightAt(int localX, int localY, int localZ) const {
 void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
     m_lights[PosToIndex(localX, localY, localZ)] = value;
-  } else {
-    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
-    return m_world.SetLightAt(globalCoords.x, globalCoords.y, globalCoords.z, value);
+  } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
+    return neighbor->SetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
   }
 }
 
@@ -265,5 +301,13 @@ glm::ivec3 Chunk::ToGlobalCoords(int localX, int localY, int localZ) const {
     localX + CHUNK_WIDTH * m_chunkCoord.x,
     localY,
     localZ + CHUNK_WIDTH * m_chunkCoord.y
+  };
+}
+
+glm::ivec3 Chunk::ToNeighborCoords(int localX, int localY, int localZ) const {
+  return {
+    MathUtil::Mod(localX, Chunk::CHUNK_WIDTH),
+    localY,
+    MathUtil::Mod(localZ, Chunk::CHUNK_WIDTH)
   };
 }
