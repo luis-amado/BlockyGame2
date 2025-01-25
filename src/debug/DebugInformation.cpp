@@ -181,6 +181,11 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
       ImGui::InputInt("Base terrain height", &DebugSettings::instance.baseTerrainHeight);
       ImGui::InputInt2("Terrain Range", DebugSettings::instance.terrainRange);
 
+      ImGui::Separator();
+      ImGui::InputDouble("Cave noise scale", &DebugSettings::instance.caveNoiseScale);
+      ImGui::InputDouble("Cave threshold", &DebugSettings::instance.caveThreshold);
+      ImGui::InputFloat3("Cave noise offset", DebugSettings::instance.caveNoiseOffsets);
+
       ImGui::Text("");
       if (ImGui::Button("Regenerate world")) {
         world.Regenerate();

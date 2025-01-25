@@ -10,6 +10,7 @@ std::optional<TextureAtlas> Blocks::s_atlas;
 
 const Block& Blocks::AIR = s_registry.Register(Block("air").NotSolid());
 const Block& Blocks::VOID_AIR = s_registry.Register(Block("void_air").NotSolid());
+const Block& Blocks::CAVE_AIR = s_registry.Register(Block("cave_air").NotSolid());
 const Block& Blocks::DIRT = s_registry.Register(Block("dirt", BlockTextures::All("dirt")));
 const Block& Blocks::GRASS = s_registry.Register(Block("grass", BlockTextures::SideUpDown("grass_side", "grass_top", "dirt")));
 const Block& Blocks::STONE = s_registry.Register(Block("stone", BlockTextures::All("stone")));

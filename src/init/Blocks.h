@@ -10,6 +10,7 @@ class Blocks {
 public:
   static const Block& AIR;
   static const Block& VOID_AIR;
+  static const Block& CAVE_AIR;
   static const Block& DIRT;
   static const Block& GRASS;
   static const Block& STONE;

@@ -61,17 +61,30 @@ void Chunk::GenerateTerrain() {
       int terrainHeight = settings.baseTerrainHeight + terrainDifference;
       for (int y = 0; y < CHUNK_HEIGHT; y++) {
 
+        char blockstate;
+
+        // TERRAIN PASS
         if (y > terrainHeight) {
-          m_blockstates[PosToIndex(x, y, z)] = Blocks::AIR;
+          blockstate = Blocks::AIR;
         } else if (y == terrainHeight) {
-          m_blockstates[PosToIndex(x, y, z)] = Blocks::GRASS;
+          blockstate = Blocks::GRASS;
         } else if (y > terrainHeight - 3) {
-          m_blockstates[PosToIndex(x, y, z)] = Blocks::DIRT;
+          blockstate = Blocks::DIRT;
         } else if (y > 0) {
-          m_blockstates[PosToIndex(x, y, z)] = Blocks::STONE;
+          blockstate = Blocks::STONE;
         } else {
-          m_blockstates[PosToIndex(x, y, z)] = Blocks::BEDROCK;
+          blockstate = Blocks::BEDROCK;
         }
+
+        // CAVE PASS
+        if (blockstate != Blocks::AIR && y >= 2) {
+          double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
+          if (caveNoiseValue < settings.caveThreshold) {
+            blockstate = Blocks::CAVE_AIR;
+          }
+        }
+
+        m_blockstates[PosToIndex(x, y, z)] = blockstate;
       }
     }
   }

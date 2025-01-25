@@ -15,6 +15,11 @@ public:
   double lacunarity = 1.8;
   float noiseOffsets[2] = { 0.0, 0.0 };
 
+  // cave settings
+  double caveNoiseScale = 30.0;
+  double caveThreshold = 0.25;
+  float caveNoiseOffsets[3] = { 0.0, 0.0, 0.0 };
+
   int baseTerrainHeight = 60;
   int terrainRange[2] = { -10, 80 };
 
