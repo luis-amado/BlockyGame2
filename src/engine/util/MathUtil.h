@@ -20,4 +20,18 @@ inline int FloorToInt(double x) {
   return (int)std::floor(x);
 }
 
+inline bool IsPowerOf2(int x) {
+  return x > 0 && (x & (x - 1)) == 0;
+}
+
+inline long long NearestPowerOf2(long long n) {
+  long long a = std::log2(n);
+
+  if (std::pow(2, a) == n) {
+    return n;
+  } else {
+    return std::pow(2, a + 1);
+  }
+}
+
 } // namespace MathUtil

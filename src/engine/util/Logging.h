@@ -17,6 +17,7 @@ namespace {
 } // namespace
 
 enum LogSeverity {
+  EXTRA,
   INFO,
   INFO2,
   WARN,
@@ -71,6 +72,7 @@ private:
 
   inline std::string getSeverityLabel(LogSeverity severity) {
     switch (severity) {
+    case EXTRA: return std::string(GRAY) + "[EXTRA]" + RESET;
     case INFO:  return std::string(GREEN) + "[INFO]" + RESET;
     case INFO2: return std::string(CYAN) + "[INFO]" + RESET;
     case WARN:  return std::string(YELLOW) + "[WARNING]" + RESET;

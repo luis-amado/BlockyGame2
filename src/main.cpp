@@ -9,7 +9,8 @@
 #include "util/Logging.h"
 #include "util/OptionalMacros.h"
 #include "engine/rendering/Shader.h"
-#include "engine/rendering/Texture.h"
+#include "engine/rendering/textures/TextureAtlasBuilder.h"
+#include "engine/rendering/textures/TextureAtlas.h"
 #include "engine/rendering/Mesh.h"
 #include "engine/camera/Camera.h"
 #include "engine/io/Window.h"
@@ -19,6 +20,8 @@
 #include "debug/DebugSettings.h"
 
 #include "world/World.h"
+
+#include "init/Blocks.h"
 
 const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
@@ -41,8 +44,14 @@ int main() {
   World world(camera);
   world.Start();
 
-  // texture
-  Texture texture = Texture("stone_bricks.png");
+  LOG(INFO) << Blocks::AIR.GetRegistryName();
+
+  Blocks::InitializeBlocks();
+  Blocks::GenerateBlockAtlas();
+
+  TextureAtlasBuilder atlasBuilder;
+  atlasBuilder.AddImageFile("stone_bricks");
+  TextureAtlas atlas = atlasBuilder.Build();
 
   Shader shader("main");
 
@@ -71,7 +80,7 @@ int main() {
     shader.LoadMatrix4f("projection", projection);
     shader.LoadMatrix4f("view", view);
 
-    texture.Use();
+    atlas.Use();
     world.Draw(shader);
 
     DebugInformation::ShowIfActive(world, camera);

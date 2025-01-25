@@ -2,12 +2,15 @@
 #include <thread>
 #include <functional>
 
+#include <glad/glad.h>
+
 #include "World.h"
 #include "Chunk.h"
 #include "util/MathUtil.h"
 #include "util/Logging.h"
 
 #include "../debug/DebugSettings.h"
+#include "../init/Blocks.h"
 
 namespace {
 glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
@@ -57,7 +60,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
     }
   }
 
-  LOG(INFO) << "Chunk terrain generator worker #" << workerId << " stopped";
+  LOG(EXTRA) << "Chunk terrain generator worker #" << workerId << " stopped";
 }
 
 void chunkMeshGeneratorWorker(World& world, int workerId) {
@@ -82,7 +85,7 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     world.m_chunksToApplyMesh.push(chunk);
   }
 
-  LOG(INFO) << "Chunk mesh generator worker #" << workerId << " stopped";
+  LOG(EXTRA) << "Chunk mesh generator worker #" << workerId << " stopped";
 }
 
 World::World(const Camera& camera) : m_camera(camera) {}
@@ -122,11 +125,13 @@ void World::Stop() {
   }
   m_workerThreads.clear();
 
+  // Clear the work queues
   m_chunkGenerationQueue = {};
   m_chunksToGenerateTerrain.clear();
   m_chunksToGenerateMesh.clear();
   m_chunksToApplyMesh.clear();
 
+  // Delete all chunks
   m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
     delete chunk;
   });
@@ -162,7 +167,7 @@ void World::Update() {
     for (int z = -renderDistance; z <= renderDistance; z++) {
 
       // Filter out chunks that are outside the render distance "circle"
-      if (x * x + z * z > renderDistance * renderDistance) {
+      if (x * x + z * z >= renderDistance * renderDistance) {
         continue;
       }
 
@@ -223,18 +228,18 @@ int World::GetChunksToGenerateMeshSize() const {
   return m_chunksToGenerateMesh.size();
 }
 
-bool World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
+char World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
   if (IsInsideWorld(globalX, globalY, globalZ)) {
     glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
     glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
-    bool result = GetChunkAt(chunkCoord)->GetBlockstateAt(localCoords.x, localCoords.y, localCoords.z);
-    return result;
+    return GetChunkAt(chunkCoord)->GetBlockstateAt(localCoords.x, localCoords.y, localCoords.z);
   } else {
-    return false;
+    return Blocks::VOID_AIR;
   }
 }
 
 void World::Draw(Shader& shader) const {
+  Blocks::GetAtlas().Use();
   m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
     chunk->Draw(shader);
   });

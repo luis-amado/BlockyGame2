@@ -8,7 +8,7 @@ class Texture {
 
 public:
   explicit Texture(const std::string& fileName);
-  Texture(int width, int height, unsigned char* image_data);
+  Texture(int width, int height, unsigned char* imageData, int mipmapLevels = 0);
   ~Texture();
 
   DELETE_COPY(Texture);

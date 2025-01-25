@@ -11,6 +11,9 @@
 #include "World.h"
 #include "../debug/DebugSettings.h"
 
+#include "../init/Blocks.h"
+#include "../block/Block.h"
+
 const int Chunk::SUBCHUNK_HEIGHT = 256;
 const int Chunk::SUBCHUNK_LAYERS = 1;
 const int Chunk::CHUNK_WIDTH = 16;
@@ -57,10 +60,17 @@ void Chunk::GenerateTerrain() {
       int terrainDifference = MathUtil::FloorToInt(MathUtil::Map(noiseValue, -1, 1, settings.terrainRange[0], settings.terrainRange[1]));
       int terrainHeight = settings.baseTerrainHeight + terrainDifference;
       for (int y = 0; y < CHUNK_HEIGHT; y++) {
-        if (y <= terrainHeight) {
-          m_blockstates[PosToIndex(x, y, z)] = true;
+
+        if (y > terrainHeight) {
+          m_blockstates[PosToIndex(x, y, z)] = Blocks::AIR;
+        } else if (y == terrainHeight) {
+          m_blockstates[PosToIndex(x, y, z)] = Blocks::GRASS;
+        } else if (y > terrainHeight - 3) {
+          m_blockstates[PosToIndex(x, y, z)] = Blocks::DIRT;
+        } else if (y > 0) {
+          m_blockstates[PosToIndex(x, y, z)] = Blocks::STONE;
         } else {
-          m_blockstates[PosToIndex(x, y, z)] = false;
+          m_blockstates[PosToIndex(x, y, z)] = Blocks::BEDROCK;
         }
       }
     }
@@ -82,15 +92,17 @@ void Chunk::GenerateMeshForSubchunk(int i) {
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int y = 0; y < SUBCHUNK_HEIGHT; y++) {
       for (int z = 0; z < CHUNK_WIDTH; z++) {
+        const Block& block = Block::FromBlockstate(m_blockstates[PosToIndex(x, y + y0, z)]);
+
         // Skip empty blocks
-        if (!m_blockstates[PosToIndex(x, y + y0, z)]) continue;
+        if (!block.IsSolid()) continue;
 
         for (const auto& face : DirectionUtil::GetAllDirections()) {
           glm::ivec3 offset = VoxelData::GetFaceOffset(face);
           // Skip face if there is a neighbor in that direction
-          if (GetBlockstateAt(x + offset.x, y + offset.y + y0, z + offset.z)) continue;
+          if (Block::FromBlockstate(GetBlockstateAt(x + offset.x, y + offset.y + y0, z + offset.z)).IsSolid()) continue;
 
-          std::vector<float> faceVertices = VoxelData::GetFaceVertices(x, y, z, face);
+          std::vector<float> faceVertices = VoxelData::GetFaceVertices(x, y, z, face, block);
           vertices.insert(vertices.end(), faceVertices.begin(), faceVertices.end());
 
           // Indices: 0, 1, 2, 2, 3, 0
@@ -128,7 +140,7 @@ void Chunk::Draw(Shader& shader) const {
   }
 }
 
-bool Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
+char Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
   if (IsInsideChunk(localX, localY, localZ)) {
     return m_blockstates[PosToIndex(localX, localY, localZ)];
   } else {

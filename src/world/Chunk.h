@@ -27,7 +27,7 @@ public:
   void ApplyMesh();
 
   void Draw(Shader& shader) const;
-  bool GetBlockstateAt(int localX, int localY, int localZ) const;
+  char GetBlockstateAt(int localX, int localY, int localZ) const;
 
   void SetActive(bool value);
 
@@ -49,7 +49,7 @@ public:
 
 private:
   glm::ivec2 m_chunkCoord;
-  std::vector<bool> m_blockstates;
+  std::vector<char> m_blockstates;
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;
   World& m_world;

@@ -14,8 +14,10 @@
 #include <mach/mach.h>
 
 #include "util/Noise.h"
-#include "rendering/Texture.h"
+#include "rendering/textures/Texture.h"
 #include <optional>
+
+#include "../block/Block.h"
 
 bool DebugInformation::s_showDebugInformation = false;
 bool DebugInformation::s_showDebugPanel = false;
@@ -136,9 +138,10 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
     ImGui::Text("");
 
-    if (world.GetBlockstateAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z))) {
-      ImGui::Text("Inside Block");
-    }
+    char blockstate = world.GetBlockstateAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z));
+    std::string blockName = Block::FromBlockstate(blockstate).GetRegistryName();
+    ImGui::Text("Blockstate: %d", blockstate);
+    ImGui::Text("Inside Block: %s", blockName.c_str());
 
     ImGui::End();
     ImGui::PopFont();

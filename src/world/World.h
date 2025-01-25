@@ -31,7 +31,7 @@ public:
   int GetChunksToGenerateTerrainSize() const;
   int GetChunksToGenerateMeshSize() const;
 
-  bool GetBlockstateAt(int globalX, int globalY, int globalZ) const;
+  char GetBlockstateAt(int globalX, int globalY, int globalZ) const;
   glm::ivec2 GetChunkCoord(int globalX, int globalZ) const;
   glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ) const;
 

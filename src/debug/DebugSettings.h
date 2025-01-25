@@ -4,7 +4,7 @@ class DebugSettings {
 public:
   // world updating settings
   bool updateWorld = true;
-  int renderDistance = 12;
+  int renderDistance = 16;
   int terrainWorkerCount = 2;
   int meshWorkerCount = 4;
 
