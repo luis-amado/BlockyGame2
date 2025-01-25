@@ -29,9 +29,12 @@ public:
   void Regenerate();
 
   int GetChunksToGenerateTerrainSize() const;
+  int GetChunksToLightSize() const;
   int GetChunksToGenerateMeshSize() const;
 
   char GetBlockstateAt(int globalX, int globalY, int globalZ) const;
+  char GetLightAt(int globalX, int globalY, int globalZ) const;
+  void SetLightAt(int globalX, int globalY, int globalZ, char value);
   glm::ivec2 GetChunkCoord(int globalX, int globalZ) const;
   glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ) const;
 
@@ -41,6 +44,7 @@ private:
 
   std::priority_queue<DistanceToChunk, std::vector<DistanceToChunk>, std::greater<DistanceToChunk>> m_chunkGenerationQueue;
   ThreadSafeQueue<Chunk*> m_chunksToGenerateTerrain;
+  ThreadSafeQueue<Chunk*> m_chunksToPropagateLighting;
   ThreadSafeQueue<Chunk*> m_chunksToGenerateMesh;
   ThreadSafeQueue<Chunk*> m_chunksToApplyMesh;
 
@@ -54,4 +58,5 @@ private:
 
   friend void chunkTerrainGeneratorWorker(World& world, int workerId);
   friend void chunkMeshGeneratorWorker(World& world, int workerId);
+  friend void chunkLightingWorker(World& world, int workerId);
 };

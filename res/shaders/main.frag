@@ -2,9 +2,13 @@
 
 out vec4 fragColor;
 in vec2 texCoords;
+in float light;
 
 uniform sampler2D tex;
 
+float ambientLighting = 0.1;
+
 void main() {
-  fragColor = texture(tex, texCoords);
+  float lightLevel = (light * (1 - ambientLighting)) + ambientLighting;
+  fragColor = texture(tex, texCoords) * lightLevel;
 }

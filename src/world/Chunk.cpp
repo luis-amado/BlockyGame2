@@ -20,7 +20,7 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
@@ -32,6 +32,39 @@ void Chunk::GenerateMesh() {
   }
 
   m_generatedMesh = true;
+}
+
+void Chunk::PropagateLighting() {
+
+  for (int x = 0; x < CHUNK_WIDTH; x++) {
+    for (int y = 0; y < CHUNK_HEIGHT; y++) {
+      for (int z = 0; z < CHUNK_WIDTH; z++) {
+        char light = GetLightAt(x, y, z);
+        if (light > 0) {
+          LightDFS(x, y, z, light);
+        }
+      }
+    }
+  }
+
+  m_propagatedLighting = true;
+}
+
+void Chunk::LightDFS(int x, int y, int z, char value) {
+  if (Block::FromBlockstate(GetBlockstateAt(x, y, z)).IsSolid()) return;
+  if (value <= 0) return;
+
+  SetLightAt(x, y, z, value);
+
+  static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+  for (const glm::ivec3& offset : spreadDirections) {
+    int newX = x + offset.x;
+    int newY = y + offset.y;
+    int newZ = z + offset.z;
+    if (newY < 0 || newY >= CHUNK_HEIGHT || GetLightAt(newX, newY, newZ) >= value - 1) continue;
+
+    LightDFS(newX, newY, newZ, value - 1);
+  }
 }
 
 void Chunk::ApplyMesh() {
@@ -77,14 +110,24 @@ void Chunk::GenerateTerrain() {
         }
 
         // CAVE PASS
-        if (blockstate != Blocks::AIR && y >= 2) {
-          double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
-          if (caveNoiseValue < settings.caveThreshold) {
-            blockstate = Blocks::CAVE_AIR;
-          }
-        }
+        // if (blockstate != Blocks::AIR && y >= 2) {
+        //   double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
+        //   if (caveNoiseValue < settings.caveThreshold) {
+        //     blockstate = Blocks::CAVE_AIR;
+        //   }
+        // }
 
         m_blockstates[PosToIndex(x, y, z)] = blockstate;
+      }
+    }
+  }
+
+  // Fill sky lights
+  for (int x = 0; x < CHUNK_WIDTH; x++) {
+    for (int z = 0; z < CHUNK_WIDTH; z++) {
+      for (int y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+        if (Block::FromBlockstate(m_blockstates[PosToIndex(x, y, z)]).IsSolid()) break;
+        m_lights[PosToIndex(x, y, z)] = 15;
       }
     }
   }
@@ -115,7 +158,7 @@ void Chunk::GenerateMeshForSubchunk(int i) {
           // Skip face if there is a neighbor in that direction
           if (Block::FromBlockstate(GetBlockstateAt(x + offset.x, y + offset.y + y0, z + offset.z)).IsSolid()) continue;
 
-          std::vector<float> faceVertices = VoxelData::GetFaceVertices(x, y, z, face, block);
+          std::vector<float> faceVertices = VoxelData::GetFaceVertices(x, y, z, *this, face, block);
           vertices.insert(vertices.end(), faceVertices.begin(), faceVertices.end());
 
           // Indices: 0, 1, 2, 2, 3, 0
@@ -162,6 +205,29 @@ char Chunk::GetBlockstateAt(int localX, int localY, int localZ) const {
   }
 }
 
+char Chunk::GetLightAt(int localX, int localY, int localZ) const {
+  if (IsInsideChunk(localX, localY, localZ)) {
+    return m_lights[PosToIndex(localX, localY, localZ)];
+  } else {
+    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
+    return m_world.GetLightAt(globalCoords.x, globalCoords.y, globalCoords.z);
+  }
+}
+
+float Chunk::GetFixedLightAt(int localX, int localY, int localZ) const {
+  float light = GetLightAt(localX, localY, localZ) / 15.0f;
+  return light;
+}
+
+void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
+  if (IsInsideChunk(localX, localY, localZ)) {
+    m_lights[PosToIndex(localX, localY, localZ)] = value;
+  } else {
+    glm::ivec3 globalCoords = ToGlobalCoords(localX, localY, localZ);
+    return m_world.SetLightAt(globalCoords.x, globalCoords.y, globalCoords.z, value);
+  }
+}
+
 void Chunk::SetActive(bool value) {
   m_active = value;
 }
@@ -176,6 +242,10 @@ bool Chunk::HasGeneratedTerrain() const {
 
 bool Chunk::HasGeneratedMesh() const {
   return m_generatedMesh;
+}
+
+bool Chunk::HasPropagatedLighting() const {
+  return m_propagatedLighting;
 }
 
 glm::ivec2 Chunk::GetChunkCoord() const {

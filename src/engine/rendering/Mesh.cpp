@@ -58,6 +58,7 @@ bool Mesh::HasData() const {
 
 void Mesh::SetupAttributes() const {
   // 3D Mesh is setup with vertex positions and texture coordinates
-  m_vertexArray.AddAttribute(0, 3, 5 * sizeof(float), 0);
-  m_vertexArray.AddAttribute(1, 2, 5 * sizeof(float), 3 * sizeof(float));
+  m_vertexArray.AddAttribute(0, 3, 6 * sizeof(float), 0);
+  m_vertexArray.AddAttribute(1, 2, 6 * sizeof(float), 3 * sizeof(float));
+  m_vertexArray.AddAttribute(2, 1, 6 * sizeof(float), 5 * sizeof(float));
 }

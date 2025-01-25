@@ -14,6 +14,7 @@
 
 namespace {
 glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
+glm::ivec2 chunkOffsetsWithCorners[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1} };
 } // namespace
 
 void chunkTerrainGeneratorWorker(World& world, int workerId) {
@@ -24,6 +25,53 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
     if (!chunk->HasGeneratedTerrain()) {
       chunk->GenerateTerrain();
+    }
+
+    // Check if a neighboring chunk, or this one, is ready for lighting
+    glm::ivec2 centerCoord = chunk->GetChunkCoord();
+    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
+      glm::ivec2 chunkCoord = centerCoord + offset;
+
+      if (!world.m_chunks.contains(chunkCoord)) {
+        continue;
+      }
+
+      // Check all the neighbors
+      Chunk* currChunk = world.GetChunkAt(chunkCoord);
+      bool ready = true;
+      for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
+        glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
+
+        if (!world.m_chunks.contains(secondChunkCoord)) {
+          ready = false;
+          break;
+        }
+
+        Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
+        if (!neighborChunk->HasGeneratedTerrain()) {
+          ready = false;
+          break;
+        }
+      }
+
+      if (ready && !currChunk->a_queuedLighting.exchange(true)) {
+        world.m_chunksToPropagateLighting.push(currChunk);
+      }
+
+    }
+
+  }
+
+  LOG(EXTRA) << "Chunk terrain generator worker #" << workerId << " stopped";
+}
+
+void chunkLightingWorker(World& world, int workerId) {
+  while (true) {
+    Chunk* chunk;
+    if (!world.m_chunksToPropagateLighting.pop(chunk)) break;
+
+    if (!chunk->HasPropagatedLighting()) {
+      chunk->PropagateLighting();
     }
 
     // Check if a neighboring chunk, or this one, is ready for meshing
@@ -47,7 +95,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
         }
 
         Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
-        if (!neighborChunk->HasGeneratedTerrain()) {
+        if (!neighborChunk->HasPropagatedLighting()) {
           ready = false;
           break;
         }
@@ -59,8 +107,6 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
     }
   }
-
-  LOG(EXTRA) << "Chunk terrain generator worker #" << workerId << " stopped";
 }
 
 void chunkMeshGeneratorWorker(World& world, int workerId) {
@@ -76,6 +122,7 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     // Check if chunk is too far away and if so, skip generating the mesh and instead generate it later if it's needed
     if (std::abs(chunkCoord.x - cameraChunkCoord.x) + std::abs(chunkCoord.y - cameraChunkCoord.y) > DebugSettings::instance.renderDistance * 2) {
       chunk->a_queuedTerrain = false;
+      chunk->a_queuedLighting = false;
       chunk->a_queuedMesh = false;
       chunk->m_queuedGeneration = false;
       continue;
@@ -98,11 +145,17 @@ void World::Start() {
   // Make sure the work queues are active
   m_chunksToGenerateMesh.start();
   m_chunksToGenerateTerrain.start();
+  m_chunksToPropagateLighting.start();
 
   // Generate the worker threads
   for (int i = 0; i < DebugSettings::instance.terrainWorkerCount; i++) {
     m_workerThreads.push_back(std::thread([this, i]() {
       chunkTerrainGeneratorWorker(*this, i);
+    }));
+  }
+  for (int i = 0; i < DebugSettings::instance.lightingWorkerCount; i++) {
+    m_workerThreads.push_back(std::thread([this, i]() {
+      chunkLightingWorker(*this, i);
     }));
   }
   for (int i = 0; i < DebugSettings::instance.meshWorkerCount; i++) {
@@ -115,6 +168,7 @@ void World::Start() {
 
 void World::Stop() {
   // Stop the worker threads
+  m_chunksToPropagateLighting.stop();
   m_chunksToGenerateTerrain.stop();
   m_chunksToGenerateMesh.stop();
 
@@ -128,6 +182,7 @@ void World::Stop() {
   // Clear the work queues
   m_chunkGenerationQueue = {};
   m_chunksToGenerateTerrain.clear();
+  m_chunksToPropagateLighting.clear();
   m_chunksToGenerateMesh.clear();
   m_chunksToApplyMesh.clear();
 
@@ -140,6 +195,7 @@ void World::Stop() {
 
 void World::ResetWorkers() {
   m_chunksToGenerateTerrain.stop();
+  m_chunksToPropagateLighting.stop();
   m_chunksToGenerateMesh.stop();
 
   for (auto& thread : m_workerThreads) {
@@ -196,7 +252,7 @@ void World::Update() {
     glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
 
     // We need to generate the terrain for this chunk and all other adjacent chunks
-    for (const glm::ivec2& offset : chunkOffsets) {
+    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
       glm::ivec2 chunkCoord = centerCoord + offset;
       Chunk* chunk = GetOrCreateChunkAt(chunkCoord);
 
@@ -224,6 +280,10 @@ int World::GetChunksToGenerateTerrainSize() const {
   return m_chunksToGenerateTerrain.size();
 }
 
+int World::GetChunksToLightSize() const {
+  return m_chunksToPropagateLighting.size();
+}
+
 int World::GetChunksToGenerateMeshSize() const {
   return m_chunksToGenerateMesh.size();
 }
@@ -235,6 +295,24 @@ char World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
     return GetChunkAt(chunkCoord)->GetBlockstateAt(localCoords.x, localCoords.y, localCoords.z);
   } else {
     return Blocks::VOID_AIR;
+  }
+}
+
+char World::GetLightAt(int globalX, int globalY, int globalZ) const {
+  if (IsInsideWorld(globalX, globalY, globalZ)) {
+    glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
+    glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
+    return GetChunkAt(chunkCoord)->GetLightAt(localCoords.x, localCoords.y, localCoords.z);
+  } else {
+    return 0;
+  }
+}
+
+void World::SetLightAt(int globalX, int globalY, int globalZ, char value) {
+  if (IsInsideWorld(globalX, globalY, globalZ)) {
+    glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
+    glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
+    GetChunkAt(chunkCoord)->SetLightAt(localCoords.x, localCoords.y, localCoords.z, value);
   }
 }
 

@@ -6,6 +6,7 @@ public:
   bool updateWorld = true;
   int renderDistance = 16;
   int terrainWorkerCount = 2;
+  int lightingWorkerCount = 1;
   int meshWorkerCount = 4;
 
   // terrain generation settings

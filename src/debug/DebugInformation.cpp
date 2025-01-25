@@ -88,10 +88,12 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
     ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
     ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
+    ImGui::Text("Light level: %d", world.GetLightAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z)));
 
     ImGui::Text("");
 
     ImGui::Text("Terrain queue: %d", world.GetChunksToGenerateTerrainSize());
+    ImGui::Text("Lighting queue: %d", world.GetChunksToLightSize());
     ImGui::Text("Mesh queue: %d", world.GetChunksToGenerateMeshSize());
 
     ImGui::Text("");
@@ -162,6 +164,7 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
       ImGui::Text("");
       ImGui::InputInt("Terrain workers", &DebugSettings::instance.terrainWorkerCount);
+      ImGui::InputInt("Lighting workers", &DebugSettings::instance.lightingWorkerCount);
       ImGui::InputInt("Mesh workers", &DebugSettings::instance.meshWorkerCount);
 
       if (ImGui::Button("Reset workers")) {

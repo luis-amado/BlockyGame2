@@ -24,16 +24,21 @@ public:
 
   void GenerateTerrain();
   void GenerateMesh();
+  void PropagateLighting();
   void ApplyMesh();
 
   void Draw(Shader& shader) const;
   char GetBlockstateAt(int localX, int localY, int localZ) const;
+  char GetLightAt(int localX, int localY, int localZ) const;
+  float GetFixedLightAt(int localX, int localY, int localZ) const;
+  void SetLightAt(int localX, int localY, int localZ, char value);
 
   void SetActive(bool value);
 
   bool HasAppliedMesh() const;
   bool HasGeneratedTerrain() const;
   bool HasGeneratedMesh() const;
+  bool HasPropagatedLighting() const;
 
   glm::ivec2 GetChunkCoord() const;
 
@@ -46,21 +51,25 @@ public:
 
   std::atomic<bool> a_queuedTerrain = false;
   std::atomic<bool> a_queuedMesh = false;
+  std::atomic<bool> a_queuedLighting = false;
 
 private:
   glm::ivec2 m_chunkCoord;
   std::vector<char> m_blockstates;
+  std::vector<char> m_lights;
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;
   World& m_world;
 
   bool m_generatedTerrain = false;
+  bool m_propagatedLighting = false;
   bool m_generatedMesh = false;
   bool m_appliedMesh = false;
 
   bool m_active = false;
 
   void GenerateMeshForSubchunk(int i);
+  void LightDFS(int x, int y, int z, char value);
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
   bool IsInsideChunk(int localX, int localY, int localZ) const;
