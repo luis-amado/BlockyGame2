@@ -34,4 +34,8 @@ inline long long NearestPowerOf2(long long n) {
   }
 }
 
+inline int IntLerp(int a, int b, double t) {
+  return a + (b - a) * t;
+}
+
 } // namespace MathUtil

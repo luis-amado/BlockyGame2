@@ -14,7 +14,11 @@ public:
   static const Block& DIRT;
   static const Block& GRASS;
   static const Block& STONE;
+  static const Block& COAL_ORE;
+  static const Block& IRON_ORE;
   static const Block& BEDROCK;
+  static const Block& OAK_LOG;
+  static const Block& OAK_LEAVES;
 
   static void InitializeBlocks();
   static void GenerateBlockAtlas();

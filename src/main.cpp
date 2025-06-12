@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <vector>
 
 #include "util/Logging.h"
 #include "util/OptionalMacros.h"
@@ -25,7 +26,6 @@
 
 const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
-const float FOV = 90.0f;
 
 bool showDebugInfo = false;
 
@@ -40,18 +40,12 @@ int main() {
 
   Input::Init(&window);
 
-  Camera camera({ 0, 83, 16 });
+  Camera camera({ 0, 90, 16 });
   World world(camera);
   world.Start();
 
-  LOG(INFO) << Blocks::AIR.GetRegistryName();
-
   Blocks::InitializeBlocks();
   Blocks::GenerateBlockAtlas();
-
-  TextureAtlasBuilder atlasBuilder;
-  atlasBuilder.AddImageFile("stone_bricks");
-  TextureAtlas atlas = atlasBuilder.Build();
 
   Shader shader("main");
 
@@ -74,13 +68,12 @@ int main() {
     camera.Update(windowHandle);
 
     glm::mat4 view = camera.CreateViewMatrix();
-    projection = glm::perspective(glm::radians(FOV), window.GetAspectRatio(), 0.01f, 1000.0f);
+    projection = glm::perspective(glm::radians(DebugSettings::instance.fov), window.GetAspectRatio(), 0.01f, 1000.0f);
 
     shader.Use();
     shader.LoadMatrix4f("projection", projection);
     shader.LoadMatrix4f("view", view);
 
-    atlas.Use();
     world.Draw(shader);
 
     DebugInformation::ShowIfActive(world, camera);

@@ -80,6 +80,11 @@ void Shader::LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix) {
   glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
+void Shader::LoadBool(const std::string& uniform, bool value) {
+  unsigned int location = GetUniformLocaction(uniform);
+  glUniform1i(location, value);
+}
+
 unsigned int Shader::GetUniformLocaction(const std::string& uniform) {
   if (m_uniformMap.find(uniform) == m_uniformMap.end()) {
     unsigned int location = glGetUniformLocation(m_shaderProgram, uniform.c_str());

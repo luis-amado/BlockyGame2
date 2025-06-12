@@ -120,9 +120,15 @@ void Chunk::GenerateTerrain() {
 
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int z = 0; z < CHUNK_WIDTH; z++) {
+
+      // (X, Z) calculations
       double noiseValue = Noise::Noise2D(x0 + x, z0 + z, settings.noiseOffsets[0], settings.noiseOffsets[1], settings.noiseScale, settings.octaves, settings.persistence, settings.lacunarity);
       int terrainDifference = MathUtil::FloorToInt(MathUtil::Map(noiseValue, -1, 1, settings.terrainRange[0], settings.terrainRange[1]));
       int terrainHeight = settings.baseTerrainHeight + terrainDifference;
+
+      double treeValue = Noise::RandomNoise2D(x0 + x, z0 + z, 0, 0);
+      int treeHeight = MathUtil::IntLerp(5, 9, Noise::RandomNoise2D(x0 + x, z0 + z, 1000, 1000));
+
       for (int y = 0; y < CHUNK_HEIGHT; y++) {
 
         char blockstate;
@@ -145,6 +151,30 @@ void Chunk::GenerateTerrain() {
           double caveNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, settings.caveNoiseOffsets[0], settings.caveNoiseOffsets[1], settings.caveNoiseOffsets[2], settings.caveNoiseScale) + 1.0) / 2.0;
           if (caveNoiseValue < settings.caveThreshold) {
             blockstate = Blocks::CAVE_AIR;
+          }
+        }
+
+        // ORE PASS
+        if (blockstate == Blocks::STONE) {
+          double coalNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, 1000, 1000, 1000, settings.coalScale) + 1.0) / 2.0;
+          if (coalNoiseValue < settings.coalThreshold) {
+            blockstate = Blocks::COAL_ORE;
+          }
+
+          double ironNoiseValue = (Noise::Noise3D(x0 + x, y, z0 + z, 2000, 2000, 1000, settings.ironScale) + 1.0) / 2.0;
+          if (ironNoiseValue < settings.ironThreshold) {
+            blockstate = Blocks::IRON_ORE;
+          }
+        }
+
+        // TREE PASS
+        if (y > terrainHeight && m_blockstates[PosToIndex(x, terrainHeight, z)] == Blocks::GRASS) {
+          if (treeValue < 0.01) {
+            if (y < terrainHeight + treeHeight + 1) {
+              blockstate = Blocks::OAK_LOG;
+            } else if (y <= terrainHeight + treeHeight + 2) {
+              blockstate = Blocks::OAK_LEAVES;
+            }
           }
         }
 
@@ -181,8 +211,8 @@ void Chunk::GenerateMeshForSubchunk(int i) {
       for (int z = 0; z < CHUNK_WIDTH; z++) {
         const Block& block = Block::FromBlockstate(m_blockstates[PosToIndex(x, y + y0, z)]);
 
-        // Skip empty blocks
-        if (!block.IsSolid()) continue;
+        // Skip air blocks
+        if (block.IsAir()) continue;
 
         for (const auto& face : DirectionUtil::GetAllDirections()) {
           glm::ivec3 offset = VoxelData::GetFaceOffset(face);
@@ -213,7 +243,9 @@ void Chunk::Draw(Shader& shader) const {
   if (!m_active || !m_appliedMesh) return;
 
   glm::mat4 model(1.0f);
-  model = glm::translate(model, { m_chunkCoord.x * CHUNK_WIDTH, 0, m_chunkCoord.y * CHUNK_WIDTH });
+  const DebugSettings& settings = DebugSettings::instance;
+
+  model = glm::translate(model, { m_chunkCoord.x * (CHUNK_WIDTH + settings.chunkSplit), 0, m_chunkCoord.y * (CHUNK_WIDTH + settings.chunkSplit) });
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
     if (m_subchunkMeshes[i].HasData()) {
       shader.LoadMatrix4f("model", model);
@@ -250,7 +282,15 @@ char Chunk::GetLightAt(int localX, int localY, int localZ) {
 }
 
 float Chunk::GetFixedLightAt(int localX, int localY, int localZ) {
-  float light = GetLightAt(localX, localY, localZ) / 15.0f;
+  if (localY < 0 || localY >= CHUNK_HEIGHT) return 0;
+  const Block& block = Block::FromBlockstate(GetBlockstateAt(localX, localY, localZ));
+  char lightLevel;
+  if (block.IsSolid()) {
+    lightLevel = -1;
+  } else {
+    lightLevel = GetLightAt(localX, localY, localZ);
+  }
+  float light = lightLevel / 15.0f;
   return light;
 }
 

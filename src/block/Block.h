@@ -19,13 +19,16 @@ public:
   static const Block& FromBlockstate(char blockstate);
 
   Block& NotSolid();
+  Block& Air();
 
   bool IsSolid() const;
+  bool IsAir() const;
 
 private:
   BlockTextures m_textures;
   char m_blockstate;
   bool m_isSolid = true;
+  bool m_isAir = false;
 
   static char s_blockstateIndex;
   static std::unordered_map<char, Block*> s_blockstateMap;

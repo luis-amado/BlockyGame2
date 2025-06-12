@@ -40,6 +40,15 @@ Block& Block::NotSolid() {
   return *this;
 }
 
+Block& Block::Air() {
+  m_isAir = true;
+  return *this;
+}
+
 bool Block::IsSolid() const {
   return m_isSolid;
+}
+
+bool Block::IsAir() const {
+  return m_isAir;
 }

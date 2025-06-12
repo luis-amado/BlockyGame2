@@ -13,7 +13,6 @@
 #include "../init/Blocks.h"
 
 namespace {
-glm::ivec2 chunkOffsets[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
 glm::ivec2 chunkOffsetsWithCorners[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1} };
 } // namespace
 
@@ -76,17 +75,19 @@ void chunkLightingWorker(World& world, int workerId) {
 
     // Check if a neighboring chunk, or this one, is ready for meshing
     glm::ivec2 centerCoord = chunk->GetChunkCoord();
-    for (const glm::ivec2& offset : chunkOffsets) {
+    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
       glm::ivec2 chunkCoord = centerCoord + offset;
 
       if (!world.m_chunks.contains(chunkCoord)) {
         continue;
       }
 
-      // Check all the neighbors
       Chunk* currChunk = world.GetChunkAt(chunkCoord);
+      if (currChunk->a_queuedMesh) continue;
+
+      // Check all the neighbors
       bool ready = true;
-      for (glm::ivec2& secondOffset : chunkOffsets) {
+      for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
         glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
 
         if (!world.m_chunks.contains(secondChunkCoord)) {
@@ -107,6 +108,8 @@ void chunkLightingWorker(World& world, int workerId) {
 
     }
   }
+
+  LOG(EXTRA) << "Chunk lighting worker #" << workerId << " stopped";
 }
 
 void chunkMeshGeneratorWorker(World& world, int workerId) {
@@ -317,6 +320,7 @@ void World::SetLightAt(int globalX, int globalY, int globalZ, char value) {
 }
 
 void World::Draw(Shader& shader) const {
+  shader.LoadBool("nightVision", DebugSettings::instance.nightVision);
   Blocks::GetAtlas().Use();
   m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
     chunk->Draw(shader);

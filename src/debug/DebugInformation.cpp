@@ -156,7 +156,9 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
     if (ImGui::BeginTabItem("World")) {
 
+      ImGui::SliderFloat("FOV", &DebugSettings::instance.fov, 0.0f, 360.0f, "%.0fº");
       ImGui::SliderInt("Render distance", &DebugSettings::instance.renderDistance, 1, 64);
+      ImGui::Checkbox("Night vision", &DebugSettings::instance.nightVision);
 
       if (ImGui::Button(DebugSettings::instance.updateWorld ? "Stop updating world" : "Continue updating world")) {
         DebugSettings::instance.updateWorld = !DebugSettings::instance.updateWorld;
@@ -170,6 +172,10 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
       if (ImGui::Button("Reset workers")) {
         world.ResetWorkers();
       }
+
+      ImGui::Text("");
+      ImGui::InputFloat("Chunk split", &DebugSettings::instance.chunkSplit);
+
       ImGui::EndTabItem();
     }
 
@@ -188,6 +194,11 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
       ImGui::InputDouble("Cave noise scale", &DebugSettings::instance.caveNoiseScale);
       ImGui::InputDouble("Cave threshold", &DebugSettings::instance.caveThreshold);
       ImGui::InputFloat3("Cave noise offset", DebugSettings::instance.caveNoiseOffsets);
+      ImGui::Separator();
+      ImGui::InputDouble("Coal noise scale", &DebugSettings::instance.coalScale);
+      ImGui::InputDouble("Coal threshold", &DebugSettings::instance.coalThreshold);
+      ImGui::InputDouble("Iron noise scale", &DebugSettings::instance.ironScale);
+      ImGui::InputDouble("iron threshold", &DebugSettings::instance.ironThreshold);
 
       ImGui::Text("");
       if (ImGui::Button("Regenerate world")) {

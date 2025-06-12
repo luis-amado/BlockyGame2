@@ -17,6 +17,7 @@ public:
 
   void Use() const;
   void LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix);
+  void LoadBool(const std::string& uniform, bool value);
 
 private:
   unsigned int m_shaderProgram;
