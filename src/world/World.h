@@ -10,7 +10,7 @@
 #include "util/threadsafe/ThreadSafeUnorderedMap.h"
 #include "rendering/Shader.h"
 #include "Chunk.h"
-#include "../engine/camera/Camera.h"
+#include "../entity/Entity.h"
 
 using DistanceToChunk = std::pair<int, Chunk*>;
 
@@ -18,7 +18,7 @@ class World {
 public:
   DELETE_COPY(World);
 
-  World(const Camera& camera);
+  World(const Entity& camera);
   ~World();
 
   void Start();
@@ -40,7 +40,7 @@ public:
 
   Chunk* GetChunkAtBlockPos(int globalX, int globalZ) const;
 
-  void Draw(Shader& shader) const;
+  void Draw() const;
 private:
   ThreadSafeUnorderedMap<glm::ivec2, Chunk*, IVec2Hash, IVec2Equal> m_chunks;
 
@@ -51,7 +51,7 @@ private:
   ThreadSafeQueue<Chunk*> m_chunksToApplyMesh;
 
   std::vector<std::thread> m_workerThreads;
-  const Camera& m_camera;
+  const Entity& m_trackingEntity;
 
   Chunk* GetOrCreateChunkAt(glm::ivec2 chunkCoord);
   Chunk* GetChunkAt(glm::ivec2 chunkCoord) const;

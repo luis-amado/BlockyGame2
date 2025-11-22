@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util/ClassMacros.h"
+#include <vector>
 
 class VertexArray {
 public:
@@ -16,4 +17,15 @@ public:
 
 private:
   unsigned int m_vao;
+};
+
+class AttributeBuilder {
+public:
+  AttributeBuilder() = default;
+
+  void AddAttribute(int size);
+  void SetupAttributes(const VertexArray& vertexArray);
+
+private:
+  std::vector<int> m_attributeSizes;
 };

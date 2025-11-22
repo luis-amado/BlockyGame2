@@ -86,6 +86,10 @@ bool Input::IsCursorShown() {
   return s_cursorShown;
 }
 
+bool Input::IsKeyPressed(int key) {
+  return glfwGetKey(s_window->GetHandle(), key) == GLFW_PRESS;
+}
+
 void Input::Init(Window* window) {
   s_window = window;
 

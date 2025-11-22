@@ -8,7 +8,7 @@ class Mesh {
 public:
 
   Mesh();
-  Mesh(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount);
+  virtual ~Mesh();
 
   DELETE_COPY(Mesh);
 
@@ -17,11 +17,11 @@ public:
 
   void SetData(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount);
   void Bind() const;
-  void Draw() const;
+  virtual void Draw() const;
 
   bool HasData() const;
 
-private:
+protected:
   VertexArray m_vertexArray;
   VertexBuffer m_vertexBuffer;
   IndexBuffer m_indexBuffer;
@@ -29,5 +29,5 @@ private:
   unsigned int m_indexCount;
   bool m_hasData;
 
-  void SetupAttributes() const;
+  virtual void SetupAttributes() const;
 };

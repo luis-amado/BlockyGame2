@@ -8,6 +8,7 @@
 #include "Chunk.h"
 #include "util/MathUtil.h"
 #include "util/Logging.h"
+#include "../engine/rendering/ShaderLibrary.h"
 
 #include "../debug/DebugSettings.h"
 #include "../init/Blocks.h"
@@ -118,7 +119,7 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     if (!world.m_chunksToGenerateMesh.pop(chunk)) break;
 
 
-    glm::vec3 cameraPosition = world.m_camera.GetPosition();
+    glm::vec3 cameraPosition = world.m_trackingEntity.GetPosition();
     glm::ivec2 cameraChunkCoord = world.GetChunkCoord(MathUtil::FloorToInt(cameraPosition.x), MathUtil::FloorToInt(cameraPosition.z));
     glm::ivec2 chunkCoord = chunk->GetChunkCoord();
 
@@ -138,7 +139,7 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
   LOG(EXTRA) << "Chunk mesh generator worker #" << workerId << " stopped";
 }
 
-World::World(const Camera& camera) : m_camera(camera) {}
+World::World(const Entity& trackingEntity) : m_trackingEntity(trackingEntity) {}
 
 World::~World() {
   Stop();
@@ -213,7 +214,7 @@ void World::ResetWorkers() {
 
 void World::Update() {
 
-  glm::ivec3 playerPosition = m_camera.GetPosition();
+  glm::ivec3 playerPosition = m_trackingEntity.GetPosition();
   glm::ivec2 playerChunk = GetChunkCoord((int)floor(playerPosition.x), (int)floor(playerPosition.z));
 
   m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
@@ -319,7 +320,8 @@ void World::SetLightAt(int globalX, int globalY, int globalZ, char value) {
   }
 }
 
-void World::Draw(Shader& shader) const {
+void World::Draw() const {
+  Shader& shader = ShaderLibrary::GetInstance().Get("main");
   shader.LoadBool("nightVision", DebugSettings::instance.nightVision);
   Blocks::GetAtlas().Use();
   m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {

@@ -2,13 +2,13 @@
 
 #include <imgui/imgui.h>
 #include "../world/World.h"
-#include "../engine/camera/Camera.h"
+#include "../entity/PlayerEntity.h"
 #include "../engine/io/Window.h"
 
 class DebugInformation {
 
 public:
-  static void ShowIfActive(World& world, const Camera& camera);
+  static void ShowIfActive(World& world, const PlayerEntity& player);
   static void Setup(const Window& window);
   static void Toggle();
 

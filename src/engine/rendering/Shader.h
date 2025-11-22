@@ -23,5 +23,5 @@ private:
   unsigned int m_shaderProgram;
   std::unordered_map<std::string, unsigned int> m_uniformMap;
 
-  unsigned int GetUniformLocaction(const std::string& uniform);
+  unsigned int GetUniformLocation(const std::string& uniform);
 };

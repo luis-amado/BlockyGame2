@@ -17,6 +17,8 @@ public:
   static double GetMouseDWheel();
   static bool IsCursorShown();
 
+  static bool IsKeyPressed(int key);
+
   static void Init(Window* window);
   static void Reset();
   static void Resized();

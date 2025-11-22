@@ -20,15 +20,7 @@ Mesh& Mesh::operator=(Mesh&& other) {
 Mesh::Mesh()
   : m_hasData(false) {}
 
-Mesh::Mesh(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount)
-  : m_vertexArray(),
-  m_vertexBuffer(vertices, vertexCount * sizeof(float)),
-  m_indexBuffer(indices, indexCount * sizeof(unsigned int)),
-  m_indexCount(indexCount),
-  m_hasData(true) {
-
-  SetupAttributes();
-}
+Mesh::~Mesh() {}
 
 void Mesh::SetData(float* vertices, size_t vertexCount, unsigned int* indices, size_t indexCount) {
   Bind();
@@ -58,7 +50,10 @@ bool Mesh::HasData() const {
 
 void Mesh::SetupAttributes() const {
   // 3D Mesh is setup with vertex positions and texture coordinates
-  m_vertexArray.AddAttribute(0, 3, 6 * sizeof(float), 0);
-  m_vertexArray.AddAttribute(1, 2, 6 * sizeof(float), 3 * sizeof(float));
-  m_vertexArray.AddAttribute(2, 1, 6 * sizeof(float), 5 * sizeof(float));
+  AttributeBuilder builder;
+  builder.AddAttribute(3);
+  builder.AddAttribute(2);
+  builder.AddAttribute(1);
+
+  builder.SetupAttributes(m_vertexArray);
 }

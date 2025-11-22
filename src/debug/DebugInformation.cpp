@@ -5,9 +5,9 @@
 
 #include <imgui/imgui.h>
 #include "../world/World.h"
-#include "../engine/camera/Camera.h"
 #include "../engine/io/Time.h"
 #include "DebugSettings.h"
+#include "DebugShapes.h"
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -16,6 +16,7 @@
 #include "util/Noise.h"
 #include "rendering/textures/Texture.h"
 #include <optional>
+#include "util/Logging.h"
 
 #include "../block/Block.h"
 
@@ -62,7 +63,7 @@ std::optional<Texture> noiseTexture = std::nullopt;
 
 } // namespace
 
-void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
+void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
   s_currTime = glfwGetTime();
   if (s_currTime - s_lastFPSCheckTime > 0.5) {
@@ -71,6 +72,9 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
   }
 
   if (s_showDebugInformation) {
+    glm::dvec3 playerPos = player.GetPosition();
+    DebugShapes::DrawBoundingBox(player.GetBoundingBox(), playerPos);
+
     ImGui::PushFont(s_font);
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
     bool open_ptr = true;
@@ -78,17 +82,16 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
     ImGui::SetNextWindowSize({ 1000, 1000 });
     ImGui::Begin("Debug information", &open_ptr, windowFlags);
     ImGui::Text("FPS: %d", s_fps);
-    ImGui::Text("XYZ: %.5f / %.5f / %.5f", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
-    ImGui::Text("Rot: %.3f %.3f", camera.GetRotation().x, camera.GetRotation().y);
-    ImGui::Text("Speed: %.3f", camera.GetSpeed());
+    ImGui::Text("XYZ: %.5f / %.5f / %.5f", playerPos.x, playerPos.y, playerPos.z);
+    ImGui::Text("Rot: %.3f %.3f", player.GetRotation().x, player.GetRotation().y);
     ImGui::Text("");
 
-    glm::ivec2 chunkCoord = world.GetChunkCoord(floor(camera.GetPosition().x), floor(camera.GetPosition().z));
-    glm::ivec3 localCoords = world.ToLocalCoords(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z));
+    glm::ivec2 chunkCoord = world.GetChunkCoord(floor(playerPos.x), floor(playerPos.z));
+    glm::ivec3 localCoords = world.ToLocalCoords(floor(playerPos.x), playerPos.y, floor(playerPos.z));
 
     ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
     ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
-    ImGui::Text("Light level: %d", world.GetLightAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z)));
+    ImGui::Text("Light level: %d", world.GetLightAt(floor(playerPos.x), playerPos.y, floor(playerPos.z)));
 
     ImGui::Text("");
 
@@ -140,7 +143,7 @@ void DebugInformation::ShowIfActive(World& world, const Camera& camera) {
 
     ImGui::Text("");
 
-    char blockstate = world.GetBlockstateAt(floor(camera.GetPosition().x), camera.GetPosition().y, floor(camera.GetPosition().z));
+    char blockstate = world.GetBlockstateAt(floor(playerPos.x), playerPos.y, floor(playerPos.z));
     std::string blockName = Block::FromBlockstate(blockstate).GetRegistryName();
     ImGui::Text("Blockstate: %d", blockstate);
     ImGui::Text("Inside Block: %s", blockName.c_str());

@@ -27,3 +27,21 @@ void VertexArray::AddAttribute(unsigned int index, int size, int stride, size_t 
   glVertexAttribPointer(index, size, GL_FLOAT, GL_FALSE, stride, (void*)offset);
   glEnableVertexAttribArray(index);
 }
+
+void AttributeBuilder::AddAttribute(int size) {
+  m_attributeSizes.push_back(size);
+}
+
+void AttributeBuilder::SetupAttributes(const VertexArray& vertexArray) {
+  int stride = 0;
+  for (int size : m_attributeSizes) {
+    stride += size;
+  }
+
+  int index = 0;
+  size_t offset = 0;
+  for (int size : m_attributeSizes) {
+    vertexArray.AddAttribute(index++, size, stride * sizeof(float), offset * sizeof(float));
+    offset += size;
+  }
+}
