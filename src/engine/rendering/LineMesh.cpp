@@ -11,6 +11,5 @@ void LineMesh::Draw() const {
 void LineMesh::SetupAttributes() const {
   AttributeBuilder builder;
   builder.AddAttribute(3); // position
-  builder.AddAttribute(3); // color
   builder.SetupAttributes(m_vertexArray);
 }

@@ -11,6 +11,7 @@ double Input::s_mouseDWheel = 0.0;
 double Input::s_prevMouseX = 0.0;
 double Input::s_prevMouseY = 0.0;
 bool Input::s_framebufferTransition = false;
+std::unordered_set<int> Input::s_justPressedKeys;
 std::unordered_map<int, std::vector<KeyCallback>> Input::s_keyCallbacks;
 
 bool Input::s_cursorShown = false;
@@ -68,6 +69,10 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
   for (const KeyCallback& callback : Input::s_keyCallbacks[key]) {
     callback(action, mods);
   }
+
+  if (action == GLFW_PRESS) {
+    Input::s_justPressedKeys.insert(key);
+  }
 }
 
 double Input::GetMouseDX() {
@@ -88,6 +93,10 @@ bool Input::IsCursorShown() {
 
 bool Input::IsKeyPressed(int key) {
   return glfwGetKey(s_window->GetHandle(), key) == GLFW_PRESS;
+}
+
+bool Input::IsKeyJustPressed(int key) {
+  return s_justPressedKeys.find(key) != s_justPressedKeys.end();
 }
 
 void Input::Init(Window* window) {
@@ -112,6 +121,7 @@ void Input::Reset() {
   s_mouseDX = 0.0;
   s_mouseDY = 0.0;
   s_mouseDWheel = 0.0;
+  s_justPressedKeys.clear();
 }
 
 void Input::Resized() {

@@ -16,7 +16,9 @@ public:
   ONLY_MOVE_ID(Shader, m_shaderProgram);
 
   void Use() const;
+
   void LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix);
+  void LoadVector3f(const std::string& uniform, const glm::vec3& vec);
   void LoadBool(const std::string& uniform, bool value);
 
 private:

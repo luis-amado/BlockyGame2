@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <functional>
 
@@ -18,6 +19,7 @@ public:
   static bool IsCursorShown();
 
   static bool IsKeyPressed(int key);
+  static bool IsKeyJustPressed(int key);
 
   static void Init(Window* window);
   static void Reset();
@@ -30,6 +32,7 @@ private:
   static double s_prevMouseX, s_prevMouseY;
   static bool s_framebufferTransition;
 
+  static std::unordered_set<int> s_justPressedKeys;
   static std::unordered_map<int, std::vector<KeyCallback>> s_keyCallbacks;
 
   static bool s_cursorShown;

@@ -69,6 +69,7 @@ int main() {
     }
 
     player.Update();
+    player.PhysicsUpdate(world);
 
     glm::mat4 view = player.GetFirstPersonViewMatrix();
     projection = glm::perspective(glm::radians(DebugSettings::instance.fov), window.GetAspectRatio(), 0.01f, 1000.0f);

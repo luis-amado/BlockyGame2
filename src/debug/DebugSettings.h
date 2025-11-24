@@ -38,6 +38,11 @@ public:
 
   bool nightVision = false;
 
+  // movement settings
+  double gravity = -20.0;
+  double jumpForce = 7.1;
+  double walkSpeed = 3.0;
+
   DebugSettings() = default;
   static DebugSettings instance;
 };

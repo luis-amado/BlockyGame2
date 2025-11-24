@@ -3,6 +3,7 @@
 #include "PhysicsEntity.h"
 #include "../physics/BoundingBox.h"
 #include <glm/mat4x4.hpp>
+#include "../debug/DebugSettings.h"
 
 class PlayerEntity : public PhysicsEntity {
 
@@ -17,6 +18,6 @@ public:
   void Update();
 
 private:
-  double m_walkSpeed = 2.0;
+  double m_walkSpeed = DebugSettings::instance.walkSpeed;
 
 };

@@ -38,4 +38,10 @@ inline int IntLerp(int a, int b, double t) {
   return a + (b - a) * t;
 }
 
+inline int Sign(float v) {
+  if (v > 0.0f) return 1.0f;
+  if (v < 0.0f) return -1.0f;
+  return 0.0f;
+}
+
 } // namespace MathUtil

@@ -73,7 +73,9 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
   if (s_showDebugInformation) {
     glm::dvec3 playerPos = player.GetPosition();
+    glDisable(GL_DEPTH_TEST);
     DebugShapes::DrawBoundingBox(player.GetBoundingBox(), playerPos);
+    glEnable(GL_DEPTH_TEST);
 
     ImGui::PushFont(s_font);
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
@@ -84,6 +86,8 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     ImGui::Text("FPS: %d", s_fps);
     ImGui::Text("XYZ: %.5f / %.5f / %.5f", playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Rot: %.3f %.3f", player.GetRotation().x, player.GetRotation().y);
+    ImGui::Text("");
+    ImGui::Text("Vel: %.3f %.3f %.3f", player.GetVelocity().x, player.GetVelocity().y, player.GetVelocity().z);
     ImGui::Text("");
 
     glm::ivec2 chunkCoord = world.GetChunkCoord(floor(playerPos.x), floor(playerPos.z));
@@ -182,8 +186,16 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       ImGui::EndTabItem();
     }
 
+    if (ImGui::BeginTabItem("Movement")) {
+      ImGui::InputDouble("Gravity", &DebugSettings::instance.gravity);
+      ImGui::InputDouble("Jump force", &DebugSettings::instance.jumpForce);
+      ImGui::InputDouble("Walk speed", &DebugSettings::instance.walkSpeed);
+
+      ImGui::EndTabItem();
+    }
+
     if (ImGui::BeginTabItem("Terrain generation")) {
-      ImGui::InputDouble("Noise Scale", &DebugSettings::instance.noiseScale);
+      ImGui::InputDouble("Noise scale", &DebugSettings::instance.noiseScale);
       ImGui::InputFloat2("Noise offset", DebugSettings::instance.noiseOffsets);
       ImGui::Text("");
       ImGui::InputInt("Octaves", &DebugSettings::instance.octaves);
@@ -191,7 +203,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       ImGui::InputDouble("Lacunarity", &DebugSettings::instance.lacunarity);
       ImGui::Text("");
       ImGui::InputInt("Base terrain height", &DebugSettings::instance.baseTerrainHeight);
-      ImGui::InputInt2("Terrain Range", DebugSettings::instance.terrainRange);
+      ImGui::InputInt2("Terrain range", DebugSettings::instance.terrainRange);
 
       ImGui::Separator();
       ImGui::InputDouble("Cave noise scale", &DebugSettings::instance.caveNoiseScale);

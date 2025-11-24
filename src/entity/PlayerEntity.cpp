@@ -28,7 +28,7 @@ glm::mat4 PlayerEntity::GetFirstPersonViewMatrix() {
 }
 
 BoundingBox PlayerEntity::GetBoundingBox() const {
-  return { 0.8, 1.7 };
+  return { 0.75, 1.7 };
 }
 
 double PlayerEntity::GetEyeLevel() const {
@@ -36,34 +36,30 @@ double PlayerEntity::GetEyeLevel() const {
 }
 
 void PlayerEntity::Update() {
-  double deltaTime = Time::deltaTime;
-
   // Update position relative to its forward direction
   glm::dvec3 forward = GetForwardVector();
   glm::dvec3 right = GetRightVector(forward);
 
-  glm::dvec3 newPosition = GetPosition();
+  glm::dvec3 newVelocity = { 0.0, 0.0, 0.0 };
 
   if (Input::IsKeyPressed(GLFW_KEY_A)) {
-    newPosition -= right * (m_walkSpeed * deltaTime);
+    newVelocity -= right * m_walkSpeed;
   }
   if (Input::IsKeyPressed(GLFW_KEY_D)) {
-    newPosition += right * (m_walkSpeed * deltaTime);
+    newVelocity += right * m_walkSpeed;
   }
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
-    newPosition += forward * (m_walkSpeed * deltaTime);
+    newVelocity += forward * m_walkSpeed;
   }
   if (Input::IsKeyPressed(GLFW_KEY_S)) {
-    newPosition -= forward * (m_walkSpeed * deltaTime);
-  }
-  if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
-    newPosition.y -= m_walkSpeed * deltaTime;
+    newVelocity -= forward * m_walkSpeed;
   }
   if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
-    newPosition.y += m_walkSpeed * deltaTime;
+    Jump();
   }
 
-  SetPosition(newPosition);
+  m_velocity.x = newVelocity.x;
+  m_velocity.z = newVelocity.z;
 
   // Update rotation
   if (!Input::IsCursorShown()) {
