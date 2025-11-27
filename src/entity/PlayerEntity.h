@@ -17,7 +17,15 @@ public:
   // Special method for player entities that runs once per frame
   void Update();
 
+  // returns a percentage change to FOV
+  float GetFOVChange() const;
+  bool CanFly() const;
+
+
 private:
   double m_walkSpeed = DebugSettings::instance.walkSpeed;
+  double m_sprintSpeed = DebugSettings::instance.sprintSpeed;
+  bool m_flying = false;
+  bool m_sprinting = false;
 
 };

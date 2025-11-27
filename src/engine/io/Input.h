@@ -20,6 +20,7 @@ public:
 
   static bool IsKeyPressed(int key);
   static bool IsKeyJustPressed(int key);
+  static bool IsKeyJustDoublePressed(int key);
 
   static void Init(Window* window);
   static void Reset();
@@ -34,6 +35,7 @@ private:
 
   static std::unordered_set<int> s_justPressedKeys;
   static std::unordered_map<int, std::vector<KeyCallback>> s_keyCallbacks;
+  static std::unordered_map<int, float> s_timeSinceLastKeypress;
 
   static bool s_cursorShown;
 

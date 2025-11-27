@@ -3,6 +3,7 @@
 
 #include "Input.h"
 #include "Window.h"
+#include "Time.h"
 #include "util/Logging.h"
 
 double Input::s_mouseDX = 0.0;
@@ -13,6 +14,7 @@ double Input::s_prevMouseY = 0.0;
 bool Input::s_framebufferTransition = false;
 std::unordered_set<int> Input::s_justPressedKeys;
 std::unordered_map<int, std::vector<KeyCallback>> Input::s_keyCallbacks;
+std::unordered_map<int, float> Input::s_timeSinceLastKeypress;
 
 bool Input::s_cursorShown = false;
 
@@ -99,6 +101,10 @@ bool Input::IsKeyJustPressed(int key) {
   return s_justPressedKeys.find(key) != s_justPressedKeys.end();
 }
 
+bool Input::IsKeyJustDoublePressed(int key) {
+  return IsKeyJustPressed(key) && s_timeSinceLastKeypress.count(key) && s_timeSinceLastKeypress[key] > 0.0f;
+}
+
 void Input::Init(Window* window) {
   s_window = window;
 
@@ -121,7 +127,19 @@ void Input::Reset() {
   s_mouseDX = 0.0;
   s_mouseDY = 0.0;
   s_mouseDWheel = 0.0;
+
+  for (int key : s_justPressedKeys) {
+    Input::s_timeSinceLastKeypress[key] = 0.0f;
+  }
   s_justPressedKeys.clear();
+
+  for (const auto& [key, time] : s_timeSinceLastKeypress) {
+    if (time > 0.3f) {
+      s_timeSinceLastKeypress.erase(key);
+    } else {
+      s_timeSinceLastKeypress[key] += Time::deltaTime;
+    }
+  }
 }
 
 void Input::Resized() {

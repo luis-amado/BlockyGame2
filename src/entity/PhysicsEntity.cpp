@@ -25,69 +25,92 @@ void PhysicsEntity::SetDisablePhysics(bool disablePhysics) {
   m_disablePhysics = disablePhysics;
 }
 
+void PhysicsEntity::SetDisableGravity(bool disableGravity) {
+  m_disableGravity = disableGravity;
+}
+
+void PhysicsEntity::SetDisableCollision(bool disableCollision) {
+  m_disableCollision = disableCollision;
+}
+
 void PhysicsEntity::PhysicsUpdate(const World& world) {
   if (m_disablePhysics) return;
 
   m_grounded = false;
 
-  m_velocity.y += GetGravity() * Time::deltaTime;
+  if (!m_disableGravity) {
+    m_velocity.y += GetGravity() * Time::deltaTime;
+    m_velocity.y = std::max(m_velocity.y, -50.0);
+  }
+
+  if (m_velocity.y < 0.0 && m_timeSinceFall < 0.02f) {
+    m_velocity.y = 0.0;
+  }
 
   glm::dvec3 pos = GetPosition();
   BoundingBox boundingBox = GetBoundingBox();
   glm::dvec3 frameVelocity = m_velocity * Time::deltaTime;
 
-  // You could slide up to three times (3 axis)
-  for (int its = 0; its < 3; its++) {
-    AABB entityAABB = AABB::CreateFromBottomCenter(pos, boundingBox.width, boundingBox.height);
-    AxisRanges blockRanges = entityAABB.CalculateBlocksInsideBox(frameVelocity);
+  if (!m_disableCollision) {
+    // You could slide up to three timesd (3 axis)
+    for (int its = 0; its < 3; its++) {
+      AABB entityAABB = AABB::CreateFromBottomCenter(pos, boundingBox.width, boundingBox.height);
+      AxisRanges blockRanges = entityAABB.CalculateBlocksInsideBox(frameVelocity);
 
-    float nearestTime = 1.0f;
-    glm::dvec3 nearestNormal = { 0.0, 0.0, 0.0 };
-    bool collided = false;
+      float nearestTime = 1.0f;
+      glm::dvec3 nearestNormal = { 0.0, 0.0, 0.0 };
+      bool collided = false;
 
-    // find nearest hit
-    for (int x = blockRanges.minX; x <= blockRanges.maxX; x++) {
-      for (int y = blockRanges.minY; y <= blockRanges.maxY; y++) {
-        for (int z = blockRanges.minZ; z <= blockRanges.maxZ; z++) {
-          if (Block::FromBlockstate(world.GetBlockstateAt(x, y, z)).IsAir()) continue;
-          AABB blockAABB = AABB::CreateFromMinCorner({ x, y, z }, 1.0, 1.0);
-          SweptCollisionResult result = entityAABB.SweptCollisionDetection(frameVelocity, blockAABB);
+      // find nearest hit
+      for (int x = blockRanges.minX; x <= blockRanges.maxX; x++) {
+        for (int y = blockRanges.minY; y <= blockRanges.maxY; y++) {
+          for (int z = blockRanges.minZ; z <= blockRanges.maxZ; z++) {
+            if (Block::FromBlockstate(world.GetBlockstateAt(x, y, z)).IsAir()) continue;
+            AABB blockAABB = AABB::CreateFromMinCorner({ x, y, z }, 1.0, 1.0);
+            SweptCollisionResult result = entityAABB.SweptCollisionDetection(frameVelocity, blockAABB);
 
-          if (result.time < nearestTime) {
-            nearestTime = result.time;
-            nearestNormal = result.normal;
-            collided = true;
+            if (result.time < nearestTime) {
+              nearestTime = result.time;
+              nearestNormal = result.normal;
+              collided = true;
+            }
           }
         }
       }
-    }
 
-    // resolve the collision
-    if (collided && nearestTime < 1.0f) {
-      float safeTime = std::max(nearestTime - 0.001f, 0.0f);
+      // resolve the collision
+      if (collided && nearestTime < 1.0f) {
+        float safeTime = std::max(nearestTime - 0.001f, 0.0f);
 
-      pos += frameVelocity * static_cast<double>(safeTime);
+        pos += frameVelocity * static_cast<double>(safeTime);
 
-      glm::dvec3 originalVelocity = frameVelocity;
-      float remainingTime = 1.0f - nearestTime;
+        glm::dvec3 originalVelocity = frameVelocity;
+        float remainingTime = 1.0f - nearestTime;
 
-      // handle the displacement (position change)
-      glm::dvec3 remainingVelocity = originalVelocity * static_cast<double>(remainingTime);
-      double dotprod = glm::dot(remainingVelocity, nearestNormal);
-      glm::dvec3 slideVelocity = remainingVelocity - (dotprod * nearestNormal);
-      frameVelocity = slideVelocity;
+        // handle the displacement (position change)
+        glm::dvec3 remainingVelocity = originalVelocity * static_cast<double>(remainingTime);
+        double dotprod = glm::dot(remainingVelocity, nearestNormal);
+        glm::dvec3 slideVelocity = remainingVelocity - (dotprod * nearestNormal);
+        frameVelocity = slideVelocity;
 
-      // update the velocity
-      double velocityDot = glm::dot(m_velocity, nearestNormal);
-      m_velocity -= (velocityDot * nearestNormal);
+        // update the velocity
+        double velocityDot = glm::dot(m_velocity, nearestNormal);
+        m_velocity -= (velocityDot * nearestNormal);
 
-      // check if the collision was against the ground
-      if (nearestNormal.y > 0.0f) {
-        m_grounded = true;
+        // check if the collision was against the ground
+        if (nearestNormal.y > 0.0f) {
+          m_grounded = true;
+        }
+      } else {
+        break;
       }
-    } else {
-      break;
     }
+  }
+
+  if (!m_grounded) {
+    m_timeSinceFall += Time::deltaTime;
+  } else {
+    m_timeSinceFall = 0.0f;
   }
 
   if (abs(frameVelocity.x) < 0.0001) {

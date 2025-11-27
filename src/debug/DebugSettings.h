@@ -3,7 +3,7 @@
 class DebugSettings {
 public:
   // visual settings
-  float fov = 90.0f;
+  float defaultFOV = 90.0f;
 
   // world updating settings
   bool updateWorld = true;
@@ -40,8 +40,9 @@ public:
 
   // movement settings
   double gravity = -20.0;
-  double jumpForce = 7.1;
-  double walkSpeed = 3.0;
+  double jumpForce = 7.0;
+  double walkSpeed = 2.5;
+  double sprintSpeed = 4.5;
 
   DebugSettings() = default;
   static DebugSettings instance;

@@ -13,6 +13,9 @@ public:
   const glm::dvec3& GetVelocity() const;
 
   void SetDisablePhysics(bool disablePhysics);
+  void SetDisableGravity(bool disableGravity);
+  void SetDisableCollision(bool disableCollision);
+
   void PhysicsUpdate(const World& world);
 
 protected:
@@ -21,6 +24,10 @@ protected:
   void Jump();
 
 private:
+  bool m_disableGravity = false;
+  bool m_disableCollision = false;
   bool m_disablePhysics = false;
   bool m_grounded = false;
+
+  float m_timeSinceFall = 0.0f;
 };

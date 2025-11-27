@@ -163,7 +163,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
     if (ImGui::BeginTabItem("World")) {
 
-      ImGui::SliderFloat("FOV", &DebugSettings::instance.fov, 0.0f, 360.0f, "%.0fº");
+      ImGui::SliderFloat("FOV", &DebugSettings::instance.defaultFOV, 0.0f, 360.0f, "%.0fº");
       ImGui::SliderInt("Render distance", &DebugSettings::instance.renderDistance, 1, 64);
       ImGui::Checkbox("Night vision", &DebugSettings::instance.nightVision);
 

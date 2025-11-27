@@ -61,6 +61,9 @@ int main() {
   window.Setup();
   DebugInformation::Setup(window);
 
+  float fov = DebugSettings::instance.defaultFOV;
+  float fovChangeTime = 0.1f;
+
   while (window.IsRunning()) {
     window.BeginFrame();
 
@@ -72,7 +75,10 @@ int main() {
     player.PhysicsUpdate(world);
 
     glm::mat4 view = player.GetFirstPersonViewMatrix();
-    projection = glm::perspective(glm::radians(DebugSettings::instance.fov), window.GetAspectRatio(), 0.01f, 1000.0f);
+
+    fov = fov + (DebugSettings::instance.defaultFOV * player.GetFOVChange() - fov) * (Time::deltaTime / fovChangeTime);
+
+    projection = glm::perspective(glm::radians(fov), window.GetAspectRatio(), 0.01f, 1000.0f);
 
     shaders.LoadMatrix4f("projection", projection);
     shaders.LoadMatrix4f("view", view);

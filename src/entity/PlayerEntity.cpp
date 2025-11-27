@@ -36,11 +36,24 @@ double PlayerEntity::GetEyeLevel() const {
 }
 
 void PlayerEntity::Update() {
+
+  if (Input::IsKeyJustDoublePressed(GLFW_KEY_SPACE)) {
+    m_flying = !m_flying;
+    SetDisableGravity(m_flying);
+  }
+
   // Update position relative to its forward direction
   glm::dvec3 forward = GetForwardVector();
   glm::dvec3 right = GetRightVector(forward);
 
   glm::dvec3 newVelocity = { 0.0, 0.0, 0.0 };
+
+  // Check for sprinting
+  if (Input::IsKeyJustDoublePressed(GLFW_KEY_W)) {
+    m_sprinting = true;
+  } else if (m_sprinting && !Input::IsKeyPressed(GLFW_KEY_W)) {
+    m_sprinting = false;
+  }
 
   if (Input::IsKeyPressed(GLFW_KEY_A)) {
     newVelocity -= right * m_walkSpeed;
@@ -49,17 +62,31 @@ void PlayerEntity::Update() {
     newVelocity += right * m_walkSpeed;
   }
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
-    newVelocity += forward * m_walkSpeed;
+    newVelocity += forward * (m_sprinting ? m_sprintSpeed : m_walkSpeed);
   }
   if (Input::IsKeyPressed(GLFW_KEY_S)) {
     newVelocity -= forward * m_walkSpeed;
   }
-  if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
-    Jump();
+
+  if (m_flying) {
+    if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
+      newVelocity.y += m_walkSpeed;
+    }
+    if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+      newVelocity.y -= m_walkSpeed;
+    }
+  } else {
+    if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
+
+      Jump();
+    }
   }
 
   m_velocity.x = newVelocity.x;
   m_velocity.z = newVelocity.z;
+  if (m_flying) {
+    m_velocity.y = newVelocity.y;
+  }
 
   // Update rotation
   if (!Input::IsCursorShown()) {
@@ -81,4 +108,16 @@ void PlayerEntity::Update() {
 
     SetRotation(rot);
   }
+}
+
+float PlayerEntity::GetFOVChange() const {
+  if (m_sprinting) {
+    return 1.1f;
+  } else {
+    return 1.0f;
+  }
+}
+
+bool PlayerEntity::CanFly() const {
+  return m_flying;
 }
