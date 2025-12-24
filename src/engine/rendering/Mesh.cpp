@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 
 #include "Mesh.h"
+#include "util/Logging.h"
 
 Mesh::Mesh(Mesh&& other)
   : m_vertexArray(std::move(other.m_vertexArray)),
@@ -27,9 +28,9 @@ void Mesh::SetData(float* vertices, size_t vertexCount, unsigned int* indices, s
   m_vertexBuffer.SetData(vertices, vertexCount * sizeof(float));
   m_indexBuffer.SetData(indices, indexCount * sizeof(unsigned int));
   m_indexCount = indexCount;
-  m_hasData = true;
 
-  SetupAttributes();
+  if (!m_hasData) SetupAttributes();
+  m_hasData = true;
 }
 
 void Mesh::Bind() const {

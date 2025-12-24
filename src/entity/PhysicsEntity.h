@@ -11,6 +11,7 @@ public:
   virtual double GetGravity() const;
   virtual double GetJumpForce() const;
   const glm::dvec3& GetVelocity() const;
+  bool IsGrounded() const;
 
   void SetDisablePhysics(bool disablePhysics);
   void SetDisableGravity(bool disableGravity);
@@ -21,13 +22,11 @@ public:
 protected:
   glm::dvec3 m_velocity;
 
-  void Jump();
+  bool Jump();
 
 private:
   bool m_disableGravity = false;
   bool m_disableCollision = false;
   bool m_disablePhysics = false;
   bool m_grounded = false;
-
-  float m_timeSinceFall = 0.0f;
 };

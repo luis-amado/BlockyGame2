@@ -6,6 +6,8 @@
 #include "../block/Block.h"
 #include "../debug/DebugSettings.h"
 
+#include <limits>
+
 PhysicsEntity::PhysicsEntity(glm::dvec3 pos, glm::dvec2 rot)
   : Entity(pos, rot) {}
 
@@ -19,6 +21,10 @@ double PhysicsEntity::GetJumpForce() const {
 
 const glm::dvec3& PhysicsEntity::GetVelocity() const {
   return m_velocity;
+}
+
+bool PhysicsEntity::IsGrounded() const {
+  return m_grounded;
 }
 
 void PhysicsEntity::SetDisablePhysics(bool disablePhysics) {
@@ -41,10 +47,6 @@ void PhysicsEntity::PhysicsUpdate(const World& world) {
   if (!m_disableGravity) {
     m_velocity.y += GetGravity() * Time::deltaTime;
     m_velocity.y = std::max(m_velocity.y, -50.0);
-  }
-
-  if (m_velocity.y < 0.0 && m_timeSinceFall < 0.02f) {
-    m_velocity.y = 0.0;
   }
 
   glm::dvec3 pos = GetPosition();
@@ -107,12 +109,6 @@ void PhysicsEntity::PhysicsUpdate(const World& world) {
     }
   }
 
-  if (!m_grounded) {
-    m_timeSinceFall += Time::deltaTime;
-  } else {
-    m_timeSinceFall = 0.0f;
-  }
-
   if (abs(frameVelocity.x) < 0.0001) {
     frameVelocity.x = 0.0;
   }
@@ -128,8 +124,10 @@ void PhysicsEntity::PhysicsUpdate(const World& world) {
   SetPosition(pos);
 }
 
-void PhysicsEntity::Jump() {
-  if (!m_grounded) return;
+
+bool PhysicsEntity::Jump() {
+  if (!m_grounded) return false;
 
   m_velocity.y = GetJumpForce();
+  return true;
 }

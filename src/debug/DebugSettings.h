@@ -5,9 +5,12 @@ public:
   // visual settings
   float defaultFOV = 90.0f;
 
+  bool smoothLighting = true;
+
   // world updating settings
   bool updateWorld = true;
   int renderDistance = 16;
+  int inMemoryBorder = 8;
   int terrainWorkerCount = 4;
   int lightingWorkerCount = 1;
   int meshWorkerCount = 4;
@@ -39,10 +42,10 @@ public:
   bool nightVision = false;
 
   // movement settings
-  double gravity = -20.0;
-  double jumpForce = 7.0;
+  double gravity = -22.0;
+  double jumpForce = 7.2;
   double walkSpeed = 2.5;
-  double sprintSpeed = 4.5;
+  double sprintMultiplier = 1.8;
 
   DebugSettings() = default;
   static DebugSettings instance;

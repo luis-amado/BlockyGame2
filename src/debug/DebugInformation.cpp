@@ -61,6 +61,10 @@ double lacunarity = 1.0;
 bool autoUpdate = false;
 std::optional<Texture> noiseTexture = std::nullopt;
 
+// const char* YN(bool value) {
+//   return value ? "Yes" : "No";
+// }
+
 } // namespace
 
 void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
@@ -88,6 +92,12 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     ImGui::Text("Rot: %.3f %.3f", player.GetRotation().x, player.GetRotation().y);
     ImGui::Text("");
     ImGui::Text("Vel: %.3f %.3f %.3f", player.GetVelocity().x, player.GetVelocity().y, player.GetVelocity().z);
+    ImGui::Text("Speed: %.2lfx", player.GetSpeedMultiplier());
+    ImGui::Text("");
+    if (player.GetLookingAtBlock().has_value()) {
+      const glm::ivec3& lookingAt = player.GetLookingAtBlock().value();
+      ImGui::Text("Looking At: %d %d %d", lookingAt.x, lookingAt.y, lookingAt.z);
+    }
     ImGui::Text("");
 
     glm::ivec2 chunkCoord = world.GetChunkCoord(floor(playerPos.x), floor(playerPos.z));
@@ -99,6 +109,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
     ImGui::Text("");
 
+    ImGui::Text("Chunks: %d", world.GetChunkCount());
     ImGui::Text("Terrain queue: %d", world.GetChunksToGenerateTerrainSize());
     ImGui::Text("Lighting queue: %d", world.GetChunksToLightSize());
     ImGui::Text("Mesh queue: %d", world.GetChunksToGenerateMeshSize());

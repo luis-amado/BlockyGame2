@@ -3,6 +3,8 @@
 #include "../world/Chunk.h"
 #include "../init/Blocks.h"
 #include "util/Logging.h"
+#include "util/MathUtil.h"
+#include "../debug/DebugSettings.h"
 #include <array>
 
 namespace {
@@ -37,12 +39,9 @@ float NormalizeAmbientLighting(float l1, float l2, float l3, float l4) {
 }  // namespace
 
 std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk, Direction face, const Block& block) {
-  // 1 84 15
-  if (x == 1 && y == 84 && z == 15) {
-    // LOG(INFO) << "WOW";
-  }
+  int subchunkY = MathUtil::Mod(y, Chunk::SUBCHUNK_HEIGHT);
   float x0 = x, x1 = x + 1;
-  float y0 = y, y1 = y + 1;
+  float y0 = subchunkY, y1 = subchunkY + 1;
   float z0 = z, z1 = z + 1;
 
   const std::string& textureName = block.GetTextures()[face];
@@ -60,10 +59,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x + 0, y - 1, z + 1);
     float l22 = chunk.GetFixedLightAt(x + 1, y - 1, z + 1);
     return {
-      x0, y1, z1, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x0, y0, z1, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x1, y0, z1, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x1, y1, z1, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x0, y1, z1, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x0, y0, z1, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x1, y0, z1, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x1, y1, z1, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   case Direction::NORTH: {
@@ -77,10 +76,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x + 0, y - 1, z - 1);
     float l22 = chunk.GetFixedLightAt(x - 1, y - 1, z - 1);
     return {
-      x1, y1, z0, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x1, y0, z0, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x0, y0, z0, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x0, y1, z0, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x1, y1, z0, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x1, y0, z0, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x0, y0, z0, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x0, y1, z0, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   case Direction::EAST: {
@@ -94,10 +93,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x + 1, y - 1, z + 0);
     float l22 = chunk.GetFixedLightAt(x + 1, y - 1, z - 1);
     return {
-      x1, y1, z1, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x1, y0, z1, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x1, y0, z0, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x1, y1, z0, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x1, y1, z1, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x1, y0, z1, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x1, y0, z0, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x1, y1, z0, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   case Direction::WEST: {
@@ -111,10 +110,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x - 1, y - 1, z + 0);
     float l22 = chunk.GetFixedLightAt(x - 1, y - 1, z + 1);
     return {
-      x0, y1, z0, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x0, y0, z0, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x0, y0, z1, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x0, y1, z1, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x0, y1, z0, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x0, y0, z0, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x0, y0, z1, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x0, y1, z1, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   case Direction::UP: {
@@ -128,10 +127,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x + 0, y + 1, z + 1);
     float l22 = chunk.GetFixedLightAt(x + 1, y + 1, z + 1);
     return {
-      x0, y1, z0, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x0, y1, z1, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x1, y1, z1, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x1, y1, z0, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x0, y1, z0, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x0, y1, z1, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x1, y1, z1, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x1, y1, z0, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   case Direction::DOWN: {
@@ -145,10 +144,10 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
     float l12 = chunk.GetFixedLightAt(x + 0, y - 1, z + 1);
     float l22 = chunk.GetFixedLightAt(x - 1, y - 1, z + 1);
     return {
-      x1, y0, z0, tex.x0, tex.y1, NormalizeAmbientLighting(l00, l10, l01, l11),
-      x1, y0, z1, tex.x0, tex.y0, NormalizeAmbientLighting(l01, l11, l02, l12),
-      x0, y0, z1, tex.x1, tex.y0, NormalizeAmbientLighting(l11, l21, l12, l22),
-      x0, y0, z0, tex.x1, tex.y1, NormalizeAmbientLighting(l10, l20, l11, l21)
+      x1, y0, z0, tex.x0, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l00, l10, l01, l11) : l11,
+      x1, y0, z1, tex.x0, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l01, l11, l02, l12) : l11,
+      x0, y0, z1, tex.x1, tex.y0, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l11, l21, l12, l22) : l11,
+      x0, y0, z0, tex.x1, tex.y1, DebugSettings::instance.smoothLighting ? NormalizeAmbientLighting(l10, l20, l11, l21) : l11
     };
   }
   }
@@ -169,4 +168,17 @@ glm::ivec3 VoxelData::GetFaceOffset(Direction face) {
   case Direction::DOWN:
     return { 0, -1, 0 };
   };
+}
+
+const std::vector<glm::ivec3>& VoxelData::GetNeighborOffsetsAndOrigin() {
+  static std::vector<glm::ivec3> neighborOffsets = {
+    { 0, 0, 0},
+    { 1, 0, 0},
+    {-1, 0, 0},
+    { 0, 1, 0},
+    { 0,-1, 0},
+    { 0, 0, 1},
+    { 0, 0,-1},
+  };
+  return neighborOffsets;
 }

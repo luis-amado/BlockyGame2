@@ -41,7 +41,7 @@ void TextureAtlasBuilder::AddImageBytes(const std::string& imageName, std::vecto
 TextureAtlas TextureAtlasBuilder::Build() const {
   // Create the texture by combining the different images
 
-  static const int TEXTURE_SIZE = 16;
+  const int TEXTURE_SIZE = 16;
 
   int minRequiredSize = std::ceil(std::sqrt((float)m_images.size())) * TEXTURE_SIZE;
   int textureMapSize = MathUtil::NearestPowerOf2(minRequiredSize);

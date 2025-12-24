@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#define XYZ(vector) vector.x, vector.y, vector.z
+
 namespace MathUtil {
 
 inline int Mod(int a, int b) {
@@ -38,14 +40,29 @@ inline int IntLerp(int a, int b, double t) {
   return a + (b - a) * t;
 }
 
-inline float Lerp(float a, float b, double t) {
+template <typename T>
+inline T Lerp(T a, T b, T t) {
   return a + (b - a) * t;
+}
+
+template <typename T>
+inline T MoveTowards(T current, T target, T distance) {
+  if (target - current > 0.0) {
+    return std::min(current + std::abs(distance), target);
+  } else {
+    return std::max(current - std::abs(distance), target);
+  }
 }
 
 inline int Sign(float v) {
   if (v > 0.0f) return 1.0f;
   if (v < 0.0f) return -1.0f;
   return 0.0f;
+}
+
+template <typename T>
+inline T Clamp(T value, T min, T max) {
+  return std::max(std::min(value, max), min);
 }
 
 } // namespace MathUtil

@@ -3,10 +3,12 @@
 #include <glm/vec2.hpp>
 #include <vector>
 #include <optional>
+#include <unordered_set>
 #include <atomic>
 #include "util/ClassMacros.h"
 #include "rendering/Mesh.h"
 #include "rendering/Shader.h"
+#include "util/threadsafe/ThreadSafeReference.h"
 
 class World;
 
@@ -25,15 +27,28 @@ public:
   void GenerateTerrain();
   void GenerateMesh();
   void PropagateLighting();
+  void PropagateLightingAtPos(glm::ivec3 localPosition, char newLight);
+  void FillSkyLight();
   void ApplyMesh();
+
+  // void UpdateMeshAtPosition(glm::ivec3 position);
+
+  // Indicate that the mesh at a certain position is not accurate anymore
+  void MarkPositionDirty(glm::ivec3 localPosition);
+  void MarkPositionAndNeighborsDirty(glm::ivec3 localPosition);
+  // Recalculate and apply the meshes at dirty subchunks
+  void CleanDirty();
+
 
   void Draw(Shader& shader) const;
   char GetBlockstateAt(int localX, int localY, int localZ);
   char GetLightAt(int localX, int localY, int localZ);
   float GetFixedLightAt(int localX, int localY, int localZ);
   void SetLightAt(int localX, int localY, int localZ, char value);
+  void SetBlockstateAt(int localX, int localY, int localZ, char value);
 
   void SetActive(bool value);
+  void MarkToUnload();
 
   bool HasAppliedMesh() const;
   bool HasGeneratedTerrain() const;
@@ -53,13 +68,17 @@ public:
   std::atomic<bool> a_queuedMesh = false;
   std::atomic<bool> a_queuedLighting = false;
 
+  std::atomic<int> a_references = 0;
+
+  void OnStopReference();
+
 private:
-  std::vector<Chunk*> m_neighbors;
   glm::ivec2 m_chunkCoord;
   std::vector<char> m_blockstates;
   std::vector<char> m_lights;
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;
+  std::unordered_set<int> m_dirtySubchunks;
   World& m_world;
 
   bool m_generatedTerrain = false;
@@ -68,14 +87,19 @@ private:
   bool m_appliedMesh = false;
 
   bool m_active = false;
+  std::atomic<bool> a_toUnload = false;
 
   void GenerateMeshForSubchunk(int i);
-  void LightDFS(int x, int y, int z, char value);
-  int GetNeighborIndex(int localX, int localZ) const;
-  Chunk* GetNeighbor(int localX, int localZ);
+  void LightSpreadingDFS(int x, int y, int z, char value);
+  void LightUpdatingDFS(int x, int y, int z);
+  ThreadSafeReference<Chunk> GetNeighbor(int localX, int localZ);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
+  inline int PosToIndex(const glm::ivec3& local) const;
   bool IsInsideChunk(int localX, int localY, int localZ) const;
+  bool IsInOtherChunk(int localX, int localY, int localZ) const;
   glm::ivec3 ToGlobalCoords(int localX, int localY, int localZ) const;
+  glm::ivec3 ToGlobalCoords(const glm::ivec3& local) const;
+  int GetSubchunkIndex(int localY) const;
 };

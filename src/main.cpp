@@ -18,6 +18,7 @@
 #include "engine/io/Time.h"
 #include "debug/DebugInformation.h"
 #include "debug/DebugSettings.h"
+#include "debug/DebugShapes.h"
 #include "entity/PlayerEntity.h"
 #include "engine/rendering/ShaderLibrary.h"
 
@@ -71,19 +72,23 @@ int main() {
       world.Update();
     }
 
-    player.Update();
-    player.PhysicsUpdate(world);
+    player.Update(world);
 
     glm::mat4 view = player.GetFirstPersonViewMatrix();
 
     fov = fov + (DebugSettings::instance.defaultFOV * player.GetFOVChange() - fov) * (Time::deltaTime / fovChangeTime);
+    float currentFOV = player.GetFOVOverride().value_or(fov);
 
-    projection = glm::perspective(glm::radians(fov), window.GetAspectRatio(), 0.01f, 1000.0f);
+    projection = glm::perspective(glm::radians(currentFOV), window.GetAspectRatio(), 0.01f, 1000.0f);
 
     shaders.LoadMatrix4f("projection", projection);
     shaders.LoadMatrix4f("view", view);
 
     world.Draw();
+
+    if (player.GetLookingAtBlock().has_value()) {
+      DebugShapes::DrawBlockBox(*player.GetLookingAtBlock(), { 0.0f, 0.0f, 0.0f });
+    }
 
     DebugInformation::ShowIfActive(world, player);
 

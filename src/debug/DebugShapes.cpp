@@ -71,6 +71,9 @@ void DebugShapes::DrawBlockBox(glm::ivec3 position, glm::vec3 color) {
 
   glm::mat4 model(1.0f);
   model = glm::translate(model, static_cast<glm::vec3>(position));
+  model = glm::translate(model, { 0.5f, 0.5f, 0.5f });
+  model = glm::scale(model, { 1.005f, 1.005f, 1.005f });
+  model = glm::translate(model, { -0.5f, -0.5f, -0.5f });
 
   shader.Use();
   shader.LoadMatrix4f("model", model);

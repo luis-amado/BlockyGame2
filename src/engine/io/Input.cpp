@@ -12,9 +12,9 @@ double Input::s_mouseDWheel = 0.0;
 double Input::s_prevMouseX = 0.0;
 double Input::s_prevMouseY = 0.0;
 bool Input::s_framebufferTransition = false;
-std::unordered_set<int> Input::s_justPressedKeys;
-std::unordered_map<int, std::vector<KeyCallback>> Input::s_keyCallbacks;
-std::unordered_map<int, float> Input::s_timeSinceLastKeypress;
+std::unordered_set<int> Input::s_justPressedInputs;
+std::unordered_map<int, std::vector<InputCallback>> Input::s_inputCallbacks;
+std::unordered_map<int, float> Input::s_timeSinceLastInput;
 
 bool Input::s_cursorShown = false;
 
@@ -37,6 +37,18 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 
   Input::s_prevMouseX = xpos;
   Input::s_prevMouseY = ypos;
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+  int inputNumber = GLFW_KEY_LAST + button + 1;
+
+  for (const InputCallback& callback : Input::s_inputCallbacks[inputNumber]) {
+    callback(action, mods);
+  }
+
+  if (action == GLFW_PRESS) {
+    Input::s_justPressedInputs.insert(inputNumber);
+  }
 }
 
 void scrollCallback(GLFWwindow* window, double xoff, double yoff) {
@@ -68,12 +80,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     Input::s_cursorShown = !Input::s_cursorShown;
   }
 
-  for (const KeyCallback& callback : Input::s_keyCallbacks[key]) {
+  for (const InputCallback& callback : Input::s_inputCallbacks[key]) {
     callback(action, mods);
   }
 
   if (action == GLFW_PRESS) {
-    Input::s_justPressedKeys.insert(key);
+    Input::s_justPressedInputs.insert(key);
   }
 }
 
@@ -93,16 +105,20 @@ bool Input::IsCursorShown() {
   return s_cursorShown;
 }
 
-bool Input::IsKeyPressed(int key) {
-  return glfwGetKey(s_window->GetHandle(), key) == GLFW_PRESS;
+bool Input::IsPressed(int input) {
+  if (input > GLFW_KEY_LAST) {
+    return glfwGetMouseButton(s_window->GetHandle(), input - GLFW_KEY_LAST - 1) == GLFW_PRESS;
+  } else {
+    return glfwGetKey(s_window->GetHandle(), input) == GLFW_PRESS;
+  }
 }
 
-bool Input::IsKeyJustPressed(int key) {
-  return s_justPressedKeys.find(key) != s_justPressedKeys.end();
+bool Input::IsJustPressed(int input) {
+  return s_justPressedInputs.find(input) != s_justPressedInputs.end();
 }
 
-bool Input::IsKeyJustDoublePressed(int key) {
-  return IsKeyJustPressed(key) && s_timeSinceLastKeypress.count(key) && s_timeSinceLastKeypress[key] > 0.0f;
+bool Input::IsJustDoublePressed(int input) {
+  return IsJustPressed(input) && s_timeSinceLastInput.count(input) && s_timeSinceLastInput[input] > 0.0f;
 }
 
 void Input::Init(Window* window) {
@@ -115,6 +131,7 @@ void Input::Init(Window* window) {
   glfwSetCursorPosCallback(window->GetHandle(), mousePositionCallback);
   glfwSetKeyCallback(window->GetHandle(), keyCallback);
   glfwSetScrollCallback(window->GetHandle(), scrollCallback);
+  glfwSetMouseButtonCallback(window->GetHandle(), mouseButtonCallback);
 
   // Hide and lock cursor
   glfwSetCursorPos(window->GetHandle(), 0, 0);
@@ -128,16 +145,17 @@ void Input::Reset() {
   s_mouseDY = 0.0;
   s_mouseDWheel = 0.0;
 
-  for (int key : s_justPressedKeys) {
-    Input::s_timeSinceLastKeypress[key] = 0.0f;
+  for (int key : s_justPressedInputs) {
+    Input::s_timeSinceLastInput[key] = 0.0f;
   }
-  s_justPressedKeys.clear();
+  s_justPressedInputs.clear();
 
-  for (const auto& [key, time] : s_timeSinceLastKeypress) {
-    if (time > 0.3f) {
-      s_timeSinceLastKeypress.erase(key);
+  for (auto it = s_timeSinceLastInput.begin(); it != s_timeSinceLastInput.end();) {
+    if (it->second > 0.3f) {
+      it = s_timeSinceLastInput.erase(it);
     } else {
-      s_timeSinceLastKeypress[key] += Time::deltaTime;
+      it->second += Time::deltaTime;
+      it++;
     }
   }
 }
@@ -146,8 +164,8 @@ void Input::Resized() {
   s_framebufferTransition = true;
 }
 
-void Input::SubscribeKeyCallback(int key, KeyCallback callback) {
-  s_keyCallbacks[key].push_back(callback);
+void Input::SubscribeKeyCallback(int key, InputCallback callback) {
+  s_inputCallbacks[key].push_back(callback);
 }
 
-void Input::UnsubscribeKeyCallback(int key, KeyCallback callback) {}
+void Input::UnsubscribeKeyCallback(int key, InputCallback callback) {}
