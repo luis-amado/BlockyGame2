@@ -8,7 +8,6 @@
 #include "util/ClassMacros.h"
 #include "util/threadsafe/ThreadSafeQueue.h"
 #include "util/threadsafe/ThreadSafeUnorderedMap.h"
-#include "util/threadsafe/ThreadSafeReference.h"
 #include "rendering/Shader.h"
 #include "Chunk.h"
 #include "../entity/Entity.h"
@@ -45,22 +44,25 @@ public:
   glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ) const;
   glm::ivec3 ToLocalCoords(glm::ivec3 global) const;
 
+  void RemoveChunk(glm::ivec2 chunkCoord);
+
   void UpdateBlockstateAt(int globalX, int globalY, int globalZ, char blockstate);
 
   Chunk* GetChunkAtBlockPos(int globalX, int globalZ) const;
-  ThreadSafeReference<Chunk> GetChunkRefAtBlockPos(int globalX, int globalZ) const;
 
   void CleanDirtyChunks();
 
   void Draw() const;
+
+  Chunk* GetChunkAt(glm::ivec2 chunkCoord) const;
 private:
   ThreadSafeUnorderedMap<glm::ivec2, Chunk*, IVec2Hash, IVec2Equal> m_chunks;
 
   std::priority_queue<DistanceToChunk, std::vector<DistanceToChunk>, std::greater<DistanceToChunk>> m_chunkGenerationQueue;
-  ThreadSafeQueue<glm::ivec2> m_chunksToGenerateTerrain;
-  ThreadSafeQueue<glm::ivec2> m_chunksToPropagateLighting;
-  ThreadSafeQueue<glm::ivec2> m_chunksToGenerateMesh;
-  ThreadSafeQueue<glm::ivec2> m_chunksToApplyMesh;
+  ThreadSafeQueue<Chunk*> m_chunksToGenerateTerrain;
+  ThreadSafeQueue<Chunk*> m_chunksToPropagateLighting;
+  ThreadSafeQueue<Chunk*> m_chunksToGenerateMesh;
+  ThreadSafeQueue<Chunk*> m_chunksToApplyMesh;
 
   // Chunks to immediately remesh (caller function must have caused the dirtyness)
   std::unordered_set<Chunk*> m_dirtyChunks;
@@ -69,8 +71,6 @@ private:
   const Entity& m_trackingEntity;
 
   Chunk* GetOrCreateChunkAt(glm::ivec2 chunkCoord);
-  Chunk* GetChunkAt(glm::ivec2 chunkCoord) const;
-  ThreadSafeReference<Chunk> GetChunkRefAt(glm::ivec2 chunkCoord) const;
 
   bool IsInsideWorld(int globalX, int globalY, int globalZ) const;
 

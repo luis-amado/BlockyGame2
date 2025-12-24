@@ -21,7 +21,20 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_neighbors(8, nullptr), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+
+Chunk::~Chunk() {
+
+  m_world.RemoveChunk(m_chunkCoord);
+  // remove itself as a reference from its neighbors
+  static std::vector<glm::ivec2> chunkCoordOffsets = { {-1,-1}, {-1,0}, {-1,1}, {0,-1}, {0,1}, {1,-1}, {1,0}, {1,1} };
+  for (const glm::ivec2& offset : chunkCoordOffsets) {
+    Chunk* chunk = m_world.GetChunkAt(m_chunkCoord + offset);
+    if (chunk == nullptr) continue;
+    chunk->RemoveNeighbor(m_chunkCoord);
+  }
+
+}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
@@ -137,10 +150,37 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
 
 }
 
-ThreadSafeReference<Chunk> Chunk::GetNeighbor(int localX, int localZ) {
-  glm::ivec3 globalCoords = ToGlobalCoords(localX, 0, localZ);
-  ThreadSafeReference<Chunk> neighbor = m_world.GetChunkRefAtBlockPos(globalCoords.x, globalCoords.z);
-  return neighbor;
+int Chunk::GetNeighborIndex(int localX, int localZ) const {
+  if (localX < 0 && localZ < 0) {
+    return 0;
+  } else if (localX >= 0 && localX < CHUNK_WIDTH && localZ < 0) {
+    return 1;
+  } else if (localX >= CHUNK_WIDTH && localZ < 0) {
+    return 2;
+  } else if (localX >= CHUNK_WIDTH && localZ >= 0 && localZ < CHUNK_WIDTH) {
+    return 3;
+  } else if (localX >= CHUNK_WIDTH && localZ >= CHUNK_WIDTH) {
+    return 4;
+  } else if (localX >= 0 && localX < CHUNK_WIDTH && localZ >= CHUNK_WIDTH) {
+    return 5;
+  } else if (localX < 0 && localZ >= CHUNK_WIDTH) {
+    return 6;
+  } else { // localX < 0 && localZ >= 0 && localZ < CHUNK_WIDTH
+    return 7;
+  }
+}
+
+Chunk* Chunk::GetNeighbor(int localX, int localZ) {
+  int neighborIndex = GetNeighborIndex(localX, localZ);
+  if (m_neighbors[neighborIndex] != nullptr) {
+    return m_neighbors[neighborIndex];
+  } else {
+    glm::ivec3 globalCoords = ToGlobalCoords(localX, 0, localZ);
+    Chunk* neighbor = m_world.GetChunkAtBlockPos(globalCoords.x, globalCoords.z);
+    if (neighbor != nullptr) m_neighbors[neighborIndex] = neighbor;
+
+    return neighbor;
+  }
 }
 
 void Chunk::ApplyMesh() {
@@ -160,6 +200,9 @@ void Chunk::GenerateTerrain() {
 
   int x0 = m_chunkCoord.x * CHUNK_WIDTH;
   int z0 = m_chunkCoord.y * CHUNK_WIDTH;
+
+  bool queued = m_queuedGeneration;
+  bool queued2 = a_queuedTerrain;
 
   const DebugSettings& settings = DebugSettings::instance;
 
@@ -231,6 +274,12 @@ void Chunk::GenerateTerrain() {
   FillSkyLight();
 
   m_generatedTerrain = true;
+}
+
+void Chunk::RemoveNeighbor(glm::ivec2 chunkCoord) {
+  int diffX = chunkCoord.x - m_chunkCoord.x;
+  int diffZ = chunkCoord.y - m_chunkCoord.y;
+  m_neighbors[GetNeighborIndex(diffX * 16, diffZ * 16)] = nullptr;
 }
 
 void Chunk::GenerateMeshForSubchunk(int i) {
@@ -308,7 +357,7 @@ void Chunk::CleanDirty() {
 
 void Chunk::Draw(Shader& shader) const {
   // TODO: Use some sort of frustum culling to prevent non-visible chunks from being drawn
-  if (!m_active || !m_appliedMesh) return;
+  if (/*!m_active ||*/ !m_appliedMesh) return;
 
   glm::mat4 model(1.0f);
   const DebugSettings& settings = DebugSettings::instance;
@@ -331,8 +380,8 @@ char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
     return m_blockstates[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    ThreadSafeReference<Chunk> neighbor = GetNeighbor(localX, localZ);
-    if (neighbor.Get() == nullptr) return Blocks::VOID_AIR;
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    if (neighbor == nullptr) return Blocks::VOID_AIR;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
     return neighbor->GetBlockstateAt(neighborCoords.x, neighborCoords.y, neighborCoords.z);
@@ -344,8 +393,8 @@ char Chunk::GetLightAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
     return m_lights[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    ThreadSafeReference<Chunk> neighbor = GetNeighbor(localX, localZ);
-    if (neighbor.Get() == nullptr) return 0;
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    if (neighbor == nullptr) return 0;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
     return neighbor->GetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z);
@@ -370,11 +419,11 @@ void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
     m_lights[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    ThreadSafeReference<Chunk> neighbor = GetNeighbor(localX, localZ);
-    if (neighbor.Get() == nullptr) return;
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    if (neighbor == nullptr) return;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
-    return neighbor->SetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
+    neighbor->SetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
   }
 }
 
@@ -382,23 +431,16 @@ void Chunk::SetBlockstateAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
     m_blockstates[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    ThreadSafeReference<Chunk> neighbor = GetNeighbor(localX, localZ);
-    if (neighbor.Get() == nullptr) return;
+    Chunk* neighbor = GetNeighbor(localX, localZ);
+    if (neighbor == nullptr) return;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
-    return neighbor->SetBlockstateAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
+    neighbor->SetBlockstateAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
   }
 }
 
 void Chunk::SetActive(bool value) {
   m_active = value;
-}
-
-void Chunk::MarkToUnload() {
-  a_toUnload.exchange(true);
-  if (a_references == 0) {
-    delete this;
-  }
 }
 
 bool Chunk::HasAppliedMesh() const {
@@ -419,12 +461,6 @@ bool Chunk::HasPropagatedLighting() const {
 
 glm::ivec2 Chunk::GetChunkCoord() const {
   return m_chunkCoord;
-}
-
-void Chunk::OnStopReference() {
-  if (a_toUnload) {
-    delete this;
-  }
 }
 
 inline int Chunk::PosToIndex(int localX, int localY, int localZ) const {

@@ -11,7 +11,6 @@
 #include "util/Logging.h"
 #include "../engine/rendering/ShaderLibrary.h"
 #include "../voxel/VoxelData.h"
-#include "util/threadsafe/ThreadSafeReference.h"
 
 #include "../debug/DebugSettings.h"
 #include "../init/Blocks.h"
@@ -23,11 +22,9 @@ glm::ivec2 chunkOffsetsWithCorners[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0
 void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
   while (true) {
-    glm::ivec2 grabbedChunkCoord;
-    if (!world.m_chunksToGenerateTerrain.pop(grabbedChunkCoord)) break;
-
-    ThreadSafeReference<Chunk> chunk = world.GetChunkRefAt(grabbedChunkCoord);
-    if (chunk.Get() == nullptr) continue;
+    Chunk* chunk;
+    if (!world.m_chunksToGenerateTerrain.pop(chunk)) break;
+    chunk->a_inUse = true;
 
     if (!chunk->HasGeneratedTerrain()) {
       chunk->GenerateTerrain();
@@ -43,8 +40,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
       }
 
       // Check all the neighbors
-      ThreadSafeReference<Chunk> currChunk = world.GetChunkRefAt(chunkCoord);
-      if (currChunk.Get() == nullptr) continue;
+      Chunk* currChunk = world.GetChunkAt(chunkCoord);
 
       bool ready = true;
       for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
@@ -55,8 +51,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
           break;
         }
 
-        ThreadSafeReference<Chunk> neighborChunk = world.GetChunkRefAt(secondChunkCoord);
-        if (neighborChunk.Get() == nullptr) continue;
+        Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
 
         if (!neighborChunk->HasGeneratedTerrain()) {
           ready = false;
@@ -65,10 +60,12 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
       }
 
       if (ready && !currChunk->a_queuedLighting.exchange(true)) {
-        world.m_chunksToPropagateLighting.push(currChunk->GetChunkCoord());
+        world.m_chunksToPropagateLighting.push(currChunk);
       }
 
     }
+
+    chunk->a_inUse = false;
 
   }
 
@@ -77,11 +74,9 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
 void chunkLightingWorker(World& world, int workerId) {
   while (true) {
-    glm::ivec2 grabbedChunkCoord;
-    if (!world.m_chunksToPropagateLighting.pop(grabbedChunkCoord)) break;
-
-    ThreadSafeReference<Chunk> chunk = world.GetChunkRefAt(grabbedChunkCoord);
-    if (chunk.Get() == nullptr) continue;
+    Chunk* chunk;
+    if (!world.m_chunksToPropagateLighting.pop(chunk)) break;
+    chunk->a_inUse = true;
 
     if (!chunk->HasPropagatedLighting()) {
       chunk->PropagateLighting();
@@ -96,8 +91,8 @@ void chunkLightingWorker(World& world, int workerId) {
         continue;
       }
 
-      ThreadSafeReference<Chunk> currChunk = world.GetChunkRefAt(chunkCoord);
-      if (currChunk.Get() == nullptr || currChunk->a_queuedMesh) continue;
+      Chunk* currChunk = world.GetChunkAt(chunkCoord);
+      if (currChunk->a_queuedMesh) continue;
 
       // Check all the neighbors
       bool ready = true;
@@ -109,8 +104,7 @@ void chunkLightingWorker(World& world, int workerId) {
           break;
         }
 
-        ThreadSafeReference<Chunk> neighborChunk = world.GetChunkRefAt(secondChunkCoord);
-        if (neighborChunk.Get() == nullptr) continue;
+        Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
 
         if (!neighborChunk->HasPropagatedLighting()) {
           ready = false;
@@ -119,10 +113,12 @@ void chunkLightingWorker(World& world, int workerId) {
       }
 
       if (ready && !currChunk->a_queuedMesh.exchange(true)) {
-        world.m_chunksToGenerateMesh.push(currChunk->GetChunkCoord());
+        world.m_chunksToGenerateMesh.push(currChunk);
       }
 
     }
+
+    chunk->a_inUse = false;
   }
 
   LOG(EXTRA) << "Chunk lighting worker #" << workerId << " stopped";
@@ -130,11 +126,9 @@ void chunkLightingWorker(World& world, int workerId) {
 
 void chunkMeshGeneratorWorker(World& world, int workerId) {
   while (true) {
-    glm::ivec2 grabbedChunkCoord;
-    if (!world.m_chunksToGenerateMesh.pop(grabbedChunkCoord)) break;
-
-    ThreadSafeReference<Chunk> chunk = world.GetChunkRefAt(grabbedChunkCoord);
-    if (chunk.Get() == nullptr) continue;
+    Chunk* chunk;
+    if (!world.m_chunksToGenerateMesh.pop(chunk)) break;
+    chunk->a_inUse = true;
 
     glm::vec3 cameraPosition = world.m_trackingEntity.GetPosition();
     glm::ivec2 cameraChunkCoord = world.GetChunkCoord(MathUtil::FloorToInt(cameraPosition.x), MathUtil::FloorToInt(cameraPosition.z));
@@ -150,7 +144,9 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     }
 
     chunk->GenerateMesh();
-    world.m_chunksToApplyMesh.push(chunk->GetChunkCoord());
+    world.m_chunksToApplyMesh.push(chunk);
+
+    chunk->a_inUse = false;
   }
 
   LOG(EXTRA) << "Chunk mesh generator worker #" << workerId << " stopped";
@@ -208,10 +204,14 @@ void World::Stop() {
   m_chunksToApplyMesh.clear();
 
   // Delete all chunks
-  m_chunks.forEach([](glm::ivec2 coord, Chunk* chunk) {
-    delete chunk;
+  std::vector<Chunk*> chunksToDelete;
+  m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
+    chunksToDelete.push_back(chunk);
   });
   m_chunks.clear();
+  for (Chunk* chunk : chunksToDelete) {
+    delete chunk;
+  }
 }
 
 void World::ResetWorkers() {
@@ -237,21 +237,15 @@ void World::Update() {
   int renderDistance = DebugSettings::instance.renderDistance;
   int inMemoryRadius = renderDistance + DebugSettings::instance.inMemoryBorder;
 
-  std::vector<glm::ivec2> chunksToUnload;
+  std::vector<Chunk*> chunksToUnload;
 
   m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
     chunk->SetActive(false);
 
     if (std::abs(coord.x - playerChunk.x) > inMemoryRadius || std::abs(coord.y - playerChunk.y) > inMemoryRadius) {
-      chunksToUnload.push_back(coord);
+      chunksToUnload.push_back(chunk);
     }
   });
-
-  for (const glm::ivec2& coord : chunksToUnload) {
-    Chunk* chunk = m_chunks.get(coord).value_or(nullptr);
-    m_chunks.erase(coord);
-    chunk->MarkToUnload();
-  }
 
   int renderDistance2 = renderDistance * renderDistance;
 
@@ -293,20 +287,24 @@ void World::Update() {
       Chunk* chunk = GetOrCreateChunkAt(chunkCoord);
 
       if (!chunk->a_queuedTerrain.exchange(true)) {
-        m_chunksToGenerateTerrain.push(chunk->GetChunkCoord());
+        m_chunksToGenerateTerrain.push(chunk);
       }
     }
   }
 
   while (!m_chunksToApplyMesh.empty()) {
-    glm::ivec2 chunkCoord;
-    m_chunksToApplyMesh.pop(chunkCoord);
-
-    Chunk* chunk = GetChunkAt(chunkCoord);
-    if (chunk == nullptr) continue;
+    Chunk* chunk;
+    m_chunksToApplyMesh.pop(chunk);
 
     chunk->ApplyMesh();
   }
+
+  // TODO: Fix this it causes issues
+  // for (Chunk* chunk : chunksToUnload) {
+  //   if (!chunk->a_inUse) {
+  //     delete chunk;
+  //   }
+  // }
 }
 
 void World::Regenerate() {
@@ -401,11 +399,6 @@ Chunk* World::GetChunkAt(glm::ivec2 chunkCoord) const {
   return chunk;
 }
 
-ThreadSafeReference<Chunk> World::GetChunkRefAt(glm::ivec2 chunkCoord) const {
-  Chunk* chunk = m_chunks.get(chunkCoord).value_or(nullptr);
-  return chunk;
-}
-
 bool World::IsInsideWorld(int globalX, int globalY, int globalZ) const {
   if (globalY < 0 || globalY >= Chunk::CHUNK_HEIGHT) {
     return false;
@@ -437,6 +430,10 @@ glm::ivec3 World::ToLocalCoords(glm::ivec3 global) const {
   };
 }
 
+void World::RemoveChunk(glm::ivec2 chunkCoord) {
+  m_chunks.erase(chunkCoord);
+}
+
 void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char blockstate) {
 
   glm::ivec3 position = { globalX, globalY, globalZ };
@@ -456,10 +453,6 @@ void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char block
 }
 
 Chunk* World::GetChunkAtBlockPos(int globalX, int globalZ) const {
-  return m_chunks.get(GetChunkCoord(globalX, globalZ)).value_or(nullptr);
-}
-
-ThreadSafeReference<Chunk> World::GetChunkRefAtBlockPos(int globalX, int globalZ) const {
   return m_chunks.get(GetChunkCoord(globalX, globalZ)).value_or(nullptr);
 }
 

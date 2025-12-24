@@ -8,7 +8,6 @@
 #include "util/ClassMacros.h"
 #include "rendering/Mesh.h"
 #include "rendering/Shader.h"
-#include "util/threadsafe/ThreadSafeReference.h"
 
 class World;
 
@@ -23,6 +22,7 @@ public:
   DELETE_COPY(Chunk);
 
   Chunk(glm::ivec2 chunkCoord, World& world);
+  ~Chunk();
 
   void GenerateTerrain();
   void GenerateMesh();
@@ -48,7 +48,6 @@ public:
   void SetBlockstateAt(int localX, int localY, int localZ, char value);
 
   void SetActive(bool value);
-  void MarkToUnload();
 
   bool HasAppliedMesh() const;
   bool HasGeneratedTerrain() const;
@@ -67,12 +66,10 @@ public:
   std::atomic<bool> a_queuedTerrain = false;
   std::atomic<bool> a_queuedMesh = false;
   std::atomic<bool> a_queuedLighting = false;
-
-  std::atomic<int> a_references = 0;
-
-  void OnStopReference();
+  std::atomic<bool> a_inUse = false;
 
 private:
+  std::vector<Chunk*> m_neighbors;
   glm::ivec2 m_chunkCoord;
   std::vector<char> m_blockstates;
   std::vector<char> m_lights;
@@ -87,12 +84,14 @@ private:
   bool m_appliedMesh = false;
 
   bool m_active = false;
-  std::atomic<bool> a_toUnload = false;
+
+  void RemoveNeighbor(glm::ivec2 chunkCoord);
 
   void GenerateMeshForSubchunk(int i);
   void LightSpreadingDFS(int x, int y, int z, char value);
   void LightUpdatingDFS(int x, int y, int z);
-  ThreadSafeReference<Chunk> GetNeighbor(int localX, int localZ);
+  int GetNeighborIndex(int localX, int localZ) const;
+  Chunk* GetNeighbor(int localX, int localZ);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
