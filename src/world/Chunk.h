@@ -22,40 +22,10 @@ public:
   DELETE_COPY(Chunk);
 
   Chunk(glm::ivec2 chunkCoord, World& world);
-  struct ChunkNeighborhood {
-    Chunk* center;
-    Chunk* neighbors[8];
-
-    Chunk* GetChunk(int offsetX, int offsetZ) const {
-      if (offsetX == 0 && offsetZ == 0) return center;
-
-      int index = -1;
-      if (offsetX < 0 && offsetZ < 0) {
-        index = 0;
-      } else if (offsetX >= 0 && offsetX < Chunk::CHUNK_WIDTH && offsetZ < 0) {
-        index = 1;
-      } else if (offsetX >= Chunk::CHUNK_WIDTH && offsetZ < 0) {
-        index = 2;
-      } else if (offsetX >= Chunk::CHUNK_WIDTH && offsetZ >= 0 && offsetZ < Chunk::CHUNK_WIDTH) {
-        index = 3;
-      } else if (offsetX >= Chunk::CHUNK_WIDTH && offsetZ >= Chunk::CHUNK_WIDTH) {
-        index = 4;
-      } else if (offsetX >= 0 && offsetX < Chunk::CHUNK_WIDTH && offsetZ >= Chunk::CHUNK_WIDTH) {
-        index = 5;
-      } else if (offsetX < 0 && offsetZ >= Chunk::CHUNK_WIDTH) {
-        index = 6;
-      } else {
-        index = 7;
-      }
-
-      if (index >= 0 && index < 8) return neighbors[index];
-      return nullptr;
-    }
-  };
 
   void GenerateTerrain();
   void GenerateMesh();
-  void PropagateLighting(const ChunkNeighborhood& context);
+  void PropagateLighting();
   void PropagateLightingAtPos(glm::ivec3 localPosition, char newLight);
   void FillSkyLight();
   void ApplyMesh();
@@ -71,15 +41,10 @@ public:
 
   void Draw(Shader& shader) const;
   char GetBlockstateAt(int localX, int localY, int localZ);
-  char GetBlockstateAt(int localX, int localY, int localZ, const ChunkNeighborhood& context);
   char GetLightAt(int localX, int localY, int localZ);
-  char GetLightAt(int localX, int localY, int localZ, const ChunkNeighborhood& context);
   float GetFixedLightAt(int localX, int localY, int localZ);
-  float GetFixedLightAt(int localX, int localY, int localZ, const ChunkNeighborhood& context);
   void SetLightAt(int localX, int localY, int localZ, char value);
-  void SetLightAt(int localX, int localY, int localZ, char value, const ChunkNeighborhood& context);
   void SetBlockstateAt(int localX, int localY, int localZ, char value);
-  void SetBlockstateAt(int localX, int localY, int localZ, char value, const ChunkNeighborhood& context);
 
   void SetActive(bool value);
 
@@ -92,7 +57,6 @@ public:
 
   glm::ivec2 GetChunkCoord() const;
   std::shared_ptr<Chunk> GetNeighbor(int localX, int localZ);
-  Chunk* GetNeighbor(int localX, int localZ, const ChunkNeighborhood& context);
   int GetNeighborIndex(int localX, int localZ) const;
 
   static const int CHUNK_WIDTH;
@@ -107,14 +71,10 @@ public:
   std::atomic<bool> a_queuedLighting = false;
 
 private:
-  std::mutex m_neighborMutex;
   std::vector<std::weak_ptr<Chunk>> m_neighbors;
   glm::ivec2 m_chunkCoord;
 
-  std::shared_mutex m_blockstateMutex;
   std::vector<char> m_blockstates;
-
-  std::shared_mutex m_lightMutex;
   std::vector<char> m_lights;
 
   std::vector<Mesh> m_subchunkMeshes;
@@ -132,7 +92,7 @@ private:
   bool m_active = false;
 
   void GenerateMeshForSubchunk(int i);
-  void LightSpreadingDFS(int x, int y, int z, char value, const ChunkNeighborhood& context);
+  void LightSpreadingDFS(int x, int y, int z, char value);
   void LightUpdatingDFS(int x, int y, int z);
   void LightRemovingDFS(int x, int y, int z, char value, char startingValue);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;

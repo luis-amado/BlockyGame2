@@ -79,32 +79,8 @@ void chunkLightingWorker(World& world, int workerId) {
 
     if (auto chunk = weakChunk.lock()) {
 
-      // Safety snapshot
-      std::vector<std::shared_ptr<Chunk>> neighborhoodGuard;
-      neighborhoodGuard.reserve(9);
-      neighborhoodGuard.push_back(chunk);
-
-      Chunk::ChunkNeighborhood context;
-      context.center = chunk.get();
-
-      for (int x = -1; x <= 1; ++x) {
-        for (int z = -1; z <= 1; ++z) {
-          if (x == 0 && z == 0) continue;
-
-          auto neighbor = chunk->GetNeighbor(x * Chunk::CHUNK_WIDTH, z * Chunk::CHUNK_WIDTH);
-          if (neighbor) {
-            neighborhoodGuard.push_back(neighbor);
-            // Store raw pointer in the correct slot for your index logic
-            int index = chunk->GetNeighborIndex(x * Chunk::CHUNK_WIDTH, z * Chunk::CHUNK_WIDTH);
-            context.neighbors[index] = neighbor.get();
-          } else {
-            // Handle missing neighbor (optional: set to nullptr)
-          }
-        }
-      }
-
       if (!chunk->HasPropagatedLighting()) {
-        chunk->PropagateLighting(context);
+        chunk->PropagateLighting();
       }
 
       // Check if a neighboring chunk, or this one, is ready for meshing
