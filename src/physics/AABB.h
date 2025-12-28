@@ -20,6 +20,10 @@ public:
   AxisRanges CalculateBlocksInsideBox(const glm::dvec3& velocity);
 
   SweptCollisionResult SweptCollisionDetection(const glm::dvec3& velocity, const AABB& box2);
+  bool IsColliding(const AABB& other) const;
+
+  glm::dvec3 GetMin() const;
+  glm::dvec3 GetMax() const;
 
 private:
   glm::dvec3 m_position;

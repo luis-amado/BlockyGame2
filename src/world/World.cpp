@@ -10,6 +10,7 @@
 #include "util/MathUtil.h"
 #include "util/Logging.h"
 #include "../engine/rendering/ShaderLibrary.h"
+#include "../engine/rendering/buffers/ResourceGraveyard.h"
 #include "../voxel/VoxelData.h"
 
 #include "../debug/DebugSettings.h"
@@ -17,55 +18,66 @@
 
 namespace {
 glm::ivec2 chunkOffsetsWithCorners[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1} };
+
+long GetDistanceToChunk(int diffX, int diffZ) {
+  return std::abs(diffX) * std::abs(diffX) + std::abs(diffZ) * std::abs(diffZ);
+}
+long GetDistanceToChunk(glm::ivec2 chunkCoord, glm::ivec2 playerCoord) {
+  int diffX = chunkCoord.x - playerCoord.x;
+  int diffZ = chunkCoord.y - playerCoord.y;
+  return std::abs(diffX) * std::abs(diffX) + std::abs(diffZ) * std::abs(diffZ);
+}
+long GetDistanceToChunk(glm::ivec2 chunkCoord, World& world) {
+  glm::dvec3 playerPos = world.GetTrackingEntity().GetPosition();
+  return GetDistanceToChunk(chunkCoord, world.GetChunkCoord(playerPos.x, playerPos.z));
+}
 } // namespace
+
+int operator<(const std::weak_ptr<Chunk>& a, const std::weak_ptr<Chunk>& b) {
+  return 1;
+}
 
 void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
   while (true) {
-    Chunk* chunk;
-    if (!world.m_chunksToGenerateTerrain.pop(chunk)) break;
-    chunk->a_inUse = true;
+    std::weak_ptr<Chunk> weakChunk;
+    if (!world.m_chunksToGenerateTerrain.pop(weakChunk)) break;
 
-    if (!chunk->HasGeneratedTerrain()) {
-      chunk->GenerateTerrain();
-    }
-
-    // Check if a neighboring chunk, or this one, is ready for lighting
-    glm::ivec2 centerCoord = chunk->GetChunkCoord();
-    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
-      glm::ivec2 chunkCoord = centerCoord + offset;
-
-      if (!world.m_chunks.contains(chunkCoord)) {
-        continue;
+    // Chunks could have been deleted, so obtain a valid pointer if one exists
+    if (auto chunk = weakChunk.lock()) {
+      if (!chunk->HasGeneratedTerrain()) {
+        chunk->GenerateTerrain();
       }
 
-      // Check all the neighbors
-      Chunk* currChunk = world.GetChunkAt(chunkCoord);
+      // Check if a neighboring chunk, or this one, is ready for lighting
+      glm::ivec2 centerCoord = chunk->GetChunkCoord();
+      for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
+        glm::ivec2 chunkCoord = centerCoord + offset;
 
-      bool ready = true;
-      for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
-        glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
-
-        if (!world.m_chunks.contains(secondChunkCoord)) {
-          ready = false;
-          break;
+        // Check all the neighbors
+        std::shared_ptr<Chunk> currChunk = world.GetChunkAt(chunkCoord);
+        if (currChunk == nullptr) {
+          continue;
         }
 
-        Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
+        bool ready = true;
+        for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
+          glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
 
-        if (!neighborChunk->HasGeneratedTerrain()) {
-          ready = false;
-          break;
+          std::shared_ptr<Chunk> neighborChunk = world.GetChunkAt(secondChunkCoord);
+          if (neighborChunk == nullptr || !neighborChunk->HasGeneratedTerrain()) {
+            ready = false;
+            break;
+          }
         }
-      }
 
-      if (ready && !currChunk->a_queuedLighting.exchange(true)) {
-        world.m_chunksToPropagateLighting.push(currChunk);
-      }
+        if (ready && !currChunk->a_queuedLighting.exchange(true)) {
+          // long distance = GetDistanceToChunk(chunkCoord, world);
+          world.m_chunksToPropagateLighting.push(currChunk);
+        }
 
+      }
     }
-
-    chunk->a_inUse = false;
 
   }
 
@@ -74,51 +86,41 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
 void chunkLightingWorker(World& world, int workerId) {
   while (true) {
-    Chunk* chunk;
-    if (!world.m_chunksToPropagateLighting.pop(chunk)) break;
-    chunk->a_inUse = true;
+    std::weak_ptr<Chunk> weakChunk;
+    if (!world.m_chunksToPropagateLighting.pop(weakChunk)) break;
 
-    if (!chunk->HasPropagatedLighting()) {
-      chunk->PropagateLighting();
-    }
-
-    // Check if a neighboring chunk, or this one, is ready for meshing
-    glm::ivec2 centerCoord = chunk->GetChunkCoord();
-    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
-      glm::ivec2 chunkCoord = centerCoord + offset;
-
-      if (!world.m_chunks.contains(chunkCoord)) {
-        continue;
+    if (auto chunk = weakChunk.lock()) {
+      if (!chunk->HasPropagatedLighting()) {
+        chunk->PropagateLighting();
       }
 
-      Chunk* currChunk = world.GetChunkAt(chunkCoord);
-      if (currChunk->a_queuedMesh) continue;
+      // Check if a neighboring chunk, or this one, is ready for meshing
+      glm::ivec2 centerCoord = chunk->GetChunkCoord();
+      for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
+        glm::ivec2 chunkCoord = centerCoord + offset;
 
-      // Check all the neighbors
-      bool ready = true;
-      for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
-        glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
+        std::shared_ptr<Chunk> currChunk = world.GetChunkAt(chunkCoord);
+        if (currChunk == nullptr || currChunk->a_queuedMesh) continue;
 
-        if (!world.m_chunks.contains(secondChunkCoord)) {
-          ready = false;
-          break;
+        // Check all the neighbors
+        bool ready = true;
+        for (glm::ivec2& secondOffset : chunkOffsetsWithCorners) {
+          glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
+
+          std::shared_ptr<Chunk> neighborChunk = world.GetChunkAt(secondChunkCoord);
+          if (neighborChunk == nullptr || !neighborChunk->HasPropagatedLighting()) {
+            ready = false;
+            break;
+          }
         }
 
-        Chunk* neighborChunk = world.GetChunkAt(secondChunkCoord);
-
-        if (!neighborChunk->HasPropagatedLighting()) {
-          ready = false;
-          break;
+        if (ready && !currChunk->a_queuedMesh.exchange(true)) {
+          // long distance = GetDistanceToChunk(chunkCoord, world);
+          world.m_chunksToGenerateMesh.push(currChunk);
         }
-      }
 
-      if (ready && !currChunk->a_queuedMesh.exchange(true)) {
-        world.m_chunksToGenerateMesh.push(currChunk);
       }
-
     }
-
-    chunk->a_inUse = false;
   }
 
   LOG(EXTRA) << "Chunk lighting worker #" << workerId << " stopped";
@@ -126,27 +128,16 @@ void chunkLightingWorker(World& world, int workerId) {
 
 void chunkMeshGeneratorWorker(World& world, int workerId) {
   while (true) {
-    Chunk* chunk;
-    if (!world.m_chunksToGenerateMesh.pop(chunk)) break;
-    chunk->a_inUse = true;
+    std::weak_ptr<Chunk> weakChunk;
+    if (!world.m_chunksToGenerateMesh.pop(weakChunk)) break;
 
-    glm::vec3 cameraPosition = world.m_trackingEntity.GetPosition();
-    glm::ivec2 cameraChunkCoord = world.GetChunkCoord(MathUtil::FloorToInt(cameraPosition.x), MathUtil::FloorToInt(cameraPosition.z));
-    glm::ivec2 chunkCoord = chunk->GetChunkCoord();
+    if (auto chunk = weakChunk.lock()) {
+      glm::ivec2 chunkCoord = chunk->GetChunkCoord();
 
-    // Check if chunk is too far away and if so, skip generating the mesh and instead generate it later if it's needed
-    if (std::abs(chunkCoord.x - cameraChunkCoord.x) + std::abs(chunkCoord.y - cameraChunkCoord.y) > DebugSettings::instance.renderDistance * 2) {
-      chunk->a_queuedTerrain = false;
-      chunk->a_queuedLighting = false;
-      chunk->a_queuedMesh = false;
-      chunk->m_queuedGeneration = false;
-      continue;
+      chunk->GenerateMesh();
+      // long distance = GetDistanceToChunk(chunkCoord, world);
+      world.m_chunksToApplyMesh.push(chunk);
     }
-
-    chunk->GenerateMesh();
-    world.m_chunksToApplyMesh.push(chunk);
-
-    chunk->a_inUse = false;
   }
 
   LOG(EXTRA) << "Chunk mesh generator worker #" << workerId << " stopped";
@@ -203,15 +194,9 @@ void World::Stop() {
   m_chunksToGenerateMesh.clear();
   m_chunksToApplyMesh.clear();
 
-  // Delete all chunks
-  std::vector<Chunk*> chunksToDelete;
-  m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
-    chunksToDelete.push_back(chunk);
-  });
+  // Clear the chunks
   m_chunks.clear();
-  for (Chunk* chunk : chunksToDelete) {
-    delete chunk;
-  }
+  ResourceGraveyard::GetInstance().Flush();
 }
 
 void World::ResetWorkers() {
@@ -237,13 +222,13 @@ void World::Update() {
   int renderDistance = DebugSettings::instance.renderDistance;
   int inMemoryRadius = renderDistance + DebugSettings::instance.inMemoryBorder;
 
-  std::vector<Chunk*> chunksToUnload;
+  std::vector<glm::ivec2> chunksCoordsToUnload;
 
-  m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
+  m_chunks.forEach([&](glm::ivec2 coord, std::shared_ptr<Chunk> chunk) {
     chunk->SetActive(false);
 
     if (std::abs(coord.x - playerChunk.x) > inMemoryRadius || std::abs(coord.y - playerChunk.y) > inMemoryRadius) {
-      chunksToUnload.push_back(chunk);
+      chunksCoordsToUnload.push_back(coord);
     }
   });
 
@@ -260,12 +245,12 @@ void World::Update() {
       glm::ivec2 chunkCoord(x, z);
       chunkCoord += playerChunk;
 
-      Chunk* chunk = GetOrCreateChunkAt(chunkCoord);
+      std::shared_ptr<Chunk> chunk = GetOrCreateChunkAt(chunkCoord);
       chunk->SetActive(true);
 
-      // Queue the chunk for generation if it hasnt been already
+      // Queue the chunk for generation if it hasnt been already queued
       if (!chunk->m_queuedGeneration) {
-        int distance = std::abs(x) + std::abs(z);
+        long distance = GetDistanceToChunk(x, z);
         m_chunkGenerationQueue.push({ distance, chunk });
         chunk->m_queuedGeneration = true;
       }
@@ -278,33 +263,37 @@ void World::Update() {
     DistanceToChunk distanceToChunk = m_chunkGenerationQueue.top();
     m_chunkGenerationQueue.pop();
 
-    Chunk* centerChunk = distanceToChunk.second;
-    glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
+    std::weak_ptr<Chunk> weakCenterChunk = distanceToChunk.second;
+    if (auto centerChunk = weakCenterChunk.lock()) {
+      glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
 
-    // We need to generate the terrain for this chunk and all other adjacent chunks
-    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
-      glm::ivec2 chunkCoord = centerCoord + offset;
-      Chunk* chunk = GetOrCreateChunkAt(chunkCoord);
+      // We need to generate the terrain for this chunk and all other adjacent chunks
+      for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
+        glm::ivec2 chunkCoord = centerCoord + offset;
+        std::shared_ptr<Chunk> chunk = GetOrCreateChunkAt(chunkCoord);
 
-      if (!chunk->a_queuedTerrain.exchange(true)) {
-        m_chunksToGenerateTerrain.push(chunk);
+        if (!chunk->a_queuedTerrain.exchange(true)) {
+          // long distance = GetDistanceToChunk(chunkCoord, playerChunk);
+          m_chunksToGenerateTerrain.push(chunk);
+        }
       }
     }
   }
 
   while (!m_chunksToApplyMesh.empty()) {
-    Chunk* chunk;
-    m_chunksToApplyMesh.pop(chunk);
+    std::weak_ptr<Chunk> weakChunk;
+    m_chunksToApplyMesh.pop(weakChunk);
 
-    chunk->ApplyMesh();
+    if (auto chunk = weakChunk.lock()) {
+      chunk->ApplyMesh();
+    }
   }
 
-  // TODO: Fix this it causes issues
-  // for (Chunk* chunk : chunksToUnload) {
-  //   if (!chunk->a_inUse) {
-  //     delete chunk;
-  //   }
-  // }
+  for (glm::ivec2 coord : chunksCoordsToUnload) {
+    m_chunks.erase(coord);
+  }
+
+  ResourceGraveyard::GetInstance().Flush();
 }
 
 void World::Regenerate() {
@@ -329,13 +318,16 @@ int World::GetChunksToGenerateMeshSize() const {
   return m_chunksToGenerateMesh.size();
 }
 
+const Entity& World::GetTrackingEntity() const {
+  return m_trackingEntity;
+}
+
 void World::MarkChunkDirty(Chunk* chunk) {
   m_dirtyChunks.insert(chunk);
 }
 
 void World::MarkPositionDirty(const glm::ivec3& globalPosition) const {
-  Chunk* chunk = GetChunkAtBlockPos(globalPosition.x, globalPosition.z);
-  chunk->MarkPositionDirty(ToLocalCoords(globalPosition));
+  GetChunkAtBlockPos(globalPosition.x, globalPosition.z)->MarkPositionDirty(ToLocalCoords(globalPosition));
 }
 
 char World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
@@ -375,17 +367,17 @@ void World::Draw() const {
   shader.Use();
   shader.LoadBool("nightVision", DebugSettings::instance.nightVision);
   Blocks::GetAtlas().Use();
-  m_chunks.forEach([&](glm::ivec2 coord, Chunk* chunk) {
+  m_chunks.forEach([&](glm::ivec2 coord, std::shared_ptr<Chunk> chunk) {
     chunk->Draw(shader);
   });
 }
 
-Chunk* World::GetOrCreateChunkAt(glm::ivec2 chunkCoord) {
-  Chunk* chunk;
+std::shared_ptr<Chunk> World::GetOrCreateChunkAt(glm::ivec2 chunkCoord) {
+  std::shared_ptr<Chunk> chunk;
 
   // Create the chunk if it doesnt exist
   if (!m_chunks.contains(chunkCoord)) {
-    chunk = new Chunk(chunkCoord, *this);
+    chunk = std::make_shared<Chunk>(chunkCoord, *this);
     m_chunks.insert(chunkCoord, chunk);
   } else {
     chunk = m_chunks.get(chunkCoord).value();
@@ -394,8 +386,8 @@ Chunk* World::GetOrCreateChunkAt(glm::ivec2 chunkCoord) {
   return chunk;
 }
 
-Chunk* World::GetChunkAt(glm::ivec2 chunkCoord) const {
-  Chunk* chunk = m_chunks.get(chunkCoord).value_or(nullptr);
+std::shared_ptr<Chunk> World::GetChunkAt(glm::ivec2 chunkCoord) const {
+  std::shared_ptr<Chunk> chunk = m_chunks.get(chunkCoord).value_or(nullptr);
   return chunk;
 }
 
@@ -439,7 +431,7 @@ void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char block
   glm::ivec3 position = { globalX, globalY, globalZ };
   std::unordered_set<Chunk*> dirtyChunks;
 
-  Chunk* chunk = GetChunkAtBlockPos(globalX, globalZ);
+  std::shared_ptr<Chunk> chunk = GetChunkAtBlockPos(globalX, globalZ);
   glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
   chunk->SetBlockstateAt(localCoords.x, localCoords.y, localCoords.z, blockstate);
 
@@ -452,7 +444,7 @@ void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char block
   CleanDirtyChunks();
 }
 
-Chunk* World::GetChunkAtBlockPos(int globalX, int globalZ) const {
+std::shared_ptr<Chunk> World::GetChunkAtBlockPos(int globalX, int globalZ) const {
   return m_chunks.get(GetChunkCoord(globalX, globalZ)).value_or(nullptr);
 }
 
@@ -461,4 +453,12 @@ void World::CleanDirtyChunks() {
     chunk->CleanDirty();
   }
   m_dirtyChunks.clear();
+}
+
+void World::RemeshAllChunks() {
+  m_chunks.forEach([&](glm::ivec2 coord, std::shared_ptr<Chunk> chunk) {
+    chunk->InvalidateMesh();
+    // long distance = GetDistanceToChunk(coord, *this);
+    m_chunksToGenerateMesh.push(chunk);
+  });
 }

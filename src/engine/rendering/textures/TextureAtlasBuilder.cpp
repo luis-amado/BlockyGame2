@@ -38,7 +38,7 @@ void TextureAtlasBuilder::AddImageBytes(const std::string& imageName, std::vecto
 }
 
 // TODO: Support different sized textures if ever needed
-TextureAtlas TextureAtlasBuilder::Build() const {
+std::unique_ptr<TextureAtlas> TextureAtlasBuilder::Build() const {
   // Create the texture by combining the different images
 
   const int TEXTURE_SIZE = 16;
@@ -84,5 +84,5 @@ TextureAtlas TextureAtlasBuilder::Build() const {
     textureMapping[m_images[i].name] = { {x0,y0}, size };
   }
 
-  return TextureAtlas(texture, textureMapping);
+  return std::make_unique<TextureAtlas>(texture, textureMapping);
 }

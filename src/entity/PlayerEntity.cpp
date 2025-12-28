@@ -10,18 +10,19 @@
 #include "../debug/DebugShapes.h"
 #include "util/Logging.h"
 #include "../init/Blocks.h"
+#include "../physics/AABB.h"
 
 namespace {
 const double sensitivity = 0.1;
 
-double RayDistanceToPlane(const glm::dvec3& origin, const glm::dvec3& direction, const glm::dvec3& normal, const glm::dvec3& center) {
-  double denom = glm::dot(direction, normal);
-  if (abs(denom) > 0.0001) {
-    double t = glm::dot((center - origin), normal) / denom;
-    if (t > 0.0) return t;
-  }
-  return std::numeric_limits<double>::infinity();
-}
+// double RayDistanceToPlane(const glm::dvec3& origin, const glm::dvec3& direction, const glm::dvec3& normal, const glm::dvec3& center) {
+//   double denom = glm::dot(direction, normal);
+//   if (abs(denom) > 0.0001) {
+//     double t = glm::dot((center - origin), normal) / denom;
+//     if (t > 0.0) return t;
+//   }
+//   return std::numeric_limits<double>::infinity();
+// }
 
 // TODO: Fix and use this method instead
 // std::pair<double, glm::ivec3> RaycastTravelNextBlock(const glm::dvec3& origin, const glm::dvec3& direction, const glm::ivec3& position) {
@@ -250,7 +251,17 @@ void PlayerEntity::Update(World& world) {
     world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
   }
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
-    world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, Blocks::STONE.GetBlockstate());
+    if (m_ghost) {
+      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, Blocks::STONE.GetBlockstate());
+    } else {
+      BoundingBox bb = GetBoundingBox();
+      AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
+      AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
+
+      if (!playerAABB.IsColliding(blockAABB)) {
+        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, Blocks::STONE.GetBlockstate());
+      }
+    }
   }
 }
 

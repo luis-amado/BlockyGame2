@@ -132,3 +132,26 @@ SweptCollisionResult AABB::SweptCollisionDetection(const glm::dvec3& velocity, c
   };
 
 }
+
+bool AABB::IsColliding(const AABB& other) const {
+  glm::dvec3 minA = GetMin();
+  glm::dvec3 minB = other.GetMin();
+  glm::dvec3 maxA = GetMax();
+  glm::dvec3 maxB = other.GetMax();
+  return (
+    minA.x <= maxB.x &&
+    maxA.x >= minB.x &&
+    minA.y <= maxB.y &&
+    maxA.y >= minB.y &&
+    minA.z <= maxB.z &&
+    maxA.z >= minB.z
+    );
+}
+
+glm::dvec3 AABB::GetMin() const {
+  return glm::dvec3(m_position.x, m_position.y, m_position.z);
+}
+
+glm::dvec3 AABB::GetMax() const {
+  return glm::dvec3(m_position.x + m_width, m_position.y + m_height, m_position.z + m_width);
+}

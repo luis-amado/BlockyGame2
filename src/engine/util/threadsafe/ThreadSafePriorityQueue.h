@@ -48,6 +48,21 @@ public:
     m_condition.notify_all();
   }
 
+  void start() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_stop = false;
+  }
+
+  int size() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_queue.size();
+  }
+
+  void clear() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_queue = {};
+  }
+
 private:
   mutable std::mutex m_mutex;
   std::condition_variable m_condition;

@@ -19,6 +19,8 @@
 #include "util/Logging.h"
 
 #include "../block/Block.h"
+#include "../init/Blocks.h"
+#include "../engine/rendering/ShaderLibrary.h"
 
 bool DebugInformation::s_showDebugInformation = false;
 bool DebugInformation::s_showDebugPanel = false;
@@ -201,6 +203,20 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       ImGui::InputDouble("Gravity", &DebugSettings::instance.gravity);
       ImGui::InputDouble("Jump force", &DebugSettings::instance.jumpForce);
       ImGui::InputDouble("Walk speed", &DebugSettings::instance.walkSpeed);
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Data")) {
+
+      if (ImGui::Button("Reload shaders")) {
+        ShaderLibrary::GetInstance().LoadShaders();
+      }
+
+      if (ImGui::Button("Reload textures")) {
+        Blocks::GenerateBlockAtlas();
+        world.RemeshAllChunks();
+      }
 
       ImGui::EndTabItem();
     }

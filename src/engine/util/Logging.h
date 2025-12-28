@@ -85,4 +85,4 @@ private:
 
 #define LOG(severity) Logger(severity, __FILENAME__, __LINE__)
 
-#define LOG_STATEMENT(statement, severity) LOG(severity) << #statement << " = " << statement
+#define LOG_STATEMENT(statement, severity) LOG(severity) << #statement << " = " << statement << " "

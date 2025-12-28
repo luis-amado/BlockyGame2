@@ -4,9 +4,10 @@
 #include <unordered_set>
 #include "../block/Block.h"
 #include "../block/BlockTextures.h"
+#include "util/Logging.h"
 
 Registry<Block> Blocks::s_registry;
-std::optional<TextureAtlas> Blocks::s_atlas;
+std::unique_ptr<TextureAtlas> Blocks::s_atlas = nullptr;
 
 const Block& Blocks::AIR = s_registry.Register(Block("air").Air().NotSolid());
 const Block& Blocks::VOID_AIR = s_registry.Register(Block("void_air").Air().NotSolid());
@@ -44,5 +45,8 @@ void Blocks::GenerateBlockAtlas() {
 }
 
 const TextureAtlas& Blocks::GetAtlas() {
+  if (s_atlas == nullptr) {
+    LOG(FATAL) << "No block texture atlas exists";
+  }
   return *s_atlas;
 }

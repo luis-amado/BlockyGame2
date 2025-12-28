@@ -21,20 +21,8 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_neighbors(8, nullptr), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
-Chunk::~Chunk() {
-
-  m_world.RemoveChunk(m_chunkCoord);
-  // remove itself as a reference from its neighbors
-  static std::vector<glm::ivec2> chunkCoordOffsets = { {-1,-1}, {-1,0}, {-1,1}, {0,-1}, {0,1}, {1,-1}, {1,0}, {1,1} };
-  for (const glm::ivec2& offset : chunkCoordOffsets) {
-    Chunk* chunk = m_world.GetChunkAt(m_chunkCoord + offset);
-    if (chunk == nullptr) continue;
-    chunk->RemoveNeighbor(m_chunkCoord);
-  }
-
-}
 
 void Chunk::GenerateMesh() {
   // Generate the mesh for each subchunk
@@ -45,7 +33,10 @@ void Chunk::GenerateMesh() {
     GenerateMeshForSubchunk(i);
   }
 
-  m_generatedMesh = true;
+  {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    m_generatedMesh = true;
+  }
 }
 
 void Chunk::PropagateLighting() {
@@ -60,8 +51,10 @@ void Chunk::PropagateLighting() {
       }
     }
   }
-
-  m_propagatedLighting = true;
+  {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    m_propagatedLighting = true;
+  }
 }
 
 void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, char newLight) {
@@ -70,6 +63,7 @@ void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, char newLight) {
 
   if (newLight < oldLight) {
     // Light removal dfs
+    LightRemovingDFS(XYZ(localPosition), newLight, oldLight);
   } else {
     LightUpdatingDFS(XYZ(localPosition));
   }
@@ -89,6 +83,16 @@ void Chunk::FillSkyLight() {
 // This DFS will spread light values to adjacent blocks
 void Chunk::LightSpreadingDFS(int x, int y, int z, char value) {
   if (value <= 0) return;
+
+  // Delegate to other chunk
+  if (!IsInsideChunk(x, y, z)) {
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
+    if (neighbor) {
+      glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
+      neighbor->LightSpreadingDFS(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
+    }
+    return;
+  }
 
   SetLightAt(x, y, z, value);
 
@@ -110,7 +114,7 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
     return;
   }
 
-  char startingLight = m_lights[PosToIndex(x, y, z)];
+  char startingLight = GetLightAt(x, y, z);
   char maxLight = startingLight;
   static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
 
@@ -135,7 +139,7 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
   // spread the light change
   if (maxLight != startingLight) {
     SetLightAt(x, y, z, maxLight);
-    MarkPositionAndNeighborsDirty({ x, y, z });
+    MarkPositionAndAllNeighborsDirty({ x, y, z });
     for (const glm::ivec3& offset : spreadDirections) {
       int newX = x + offset.x;
       int newY = y + offset.y;
@@ -145,6 +149,47 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
       if (currLight < maxLight - 1) {
         LightUpdatingDFS(newX, newY, newZ);
       }
+    }
+  }
+
+}
+
+void Chunk::LightRemovingDFS(int x, int y, int z, char value, char startingValue) {
+  if (startingValue <= 0) return;
+
+  SetLightAt(x, y, z, value);
+  MarkPositionAndAllNeighborsDirty({ x, y, z });
+
+  static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+
+  for (const glm::ivec3& offset : spreadDirections) {
+    glm::ivec3 pos = glm::ivec3 { x, y, z } + offset;
+
+    if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
+
+
+    // Go towards light decreases to block them, unless it's a light source
+    char currLight = GetLightAt(XYZ(pos));
+    char newValue = std::max(0, value - 1);
+
+    // TODO: Set the new value to the most of its neighbors -1
+    for (const glm::ivec3& offset2 : spreadDirections) {
+      glm::ivec3 neighborPos = pos + offset2;
+      if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
+
+      char lightAtBlock = GetLightAt(XYZ(neighborPos));
+      // Special check because skylight doesn't travel upwards
+      if (lightAtBlock - 1 > newValue && (offset2.y >= 0 || lightAtBlock != 15)) {
+        newValue = lightAtBlock - 1;
+      }
+    }
+
+    if (currLight < startingValue && currLight > newValue) {
+      LightRemovingDFS(XYZ(pos), newValue, startingValue - 1);
+    }
+    // Sky light going down
+    if (startingValue == 15 && currLight == 15 && offset.y < 0) {
+      LightRemovingDFS(XYZ(pos), newValue, startingValue);
     }
   }
 
@@ -170,17 +215,25 @@ int Chunk::GetNeighborIndex(int localX, int localZ) const {
   }
 }
 
-Chunk* Chunk::GetNeighbor(int localX, int localZ) {
+std::shared_ptr<Chunk> Chunk::GetNeighbor(int localX, int localZ) {
   int neighborIndex = GetNeighborIndex(localX, localZ);
-  if (m_neighbors[neighborIndex] != nullptr) {
-    return m_neighbors[neighborIndex];
-  } else {
-    glm::ivec3 globalCoords = ToGlobalCoords(localX, 0, localZ);
-    Chunk* neighbor = m_world.GetChunkAtBlockPos(globalCoords.x, globalCoords.z);
-    if (neighbor != nullptr) m_neighbors[neighborIndex] = neighbor;
 
-    return neighbor;
+  {
+    std::lock_guard<std::mutex> lock(m_neighborMutex);
+    if (auto storedNeighbor = m_neighbors[neighborIndex].lock()) {
+      return storedNeighbor;
+    }
   }
+
+  glm::ivec3 globalCoords = ToGlobalCoords(localX, 0, localZ);
+  std::shared_ptr<Chunk> neighbor = m_world.GetChunkAtBlockPos(globalCoords.x, globalCoords.z);
+
+  if (neighbor != nullptr) {
+    std::lock_guard<std::mutex> lock(m_neighborMutex);
+    m_neighbors[neighborIndex] = neighbor;
+  }
+
+  return neighbor;
 }
 
 void Chunk::ApplyMesh() {
@@ -192,8 +245,10 @@ void Chunk::ApplyMesh() {
   }
 
   m_subchunkMeshesData.resize(Chunk::SUBCHUNK_LAYERS, {});
-
-  m_appliedMesh = true;
+  {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    m_appliedMesh = true;
+  }
 }
 
 void Chunk::GenerateTerrain() {
@@ -201,10 +256,9 @@ void Chunk::GenerateTerrain() {
   int x0 = m_chunkCoord.x * CHUNK_WIDTH;
   int z0 = m_chunkCoord.y * CHUNK_WIDTH;
 
-  bool queued = m_queuedGeneration;
-  bool queued2 = a_queuedTerrain;
-
   const DebugSettings& settings = DebugSettings::instance;
+
+  std::unique_lock<std::shared_mutex> lock(m_blockstateMutex);
 
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int z = 0; z < CHUNK_WIDTH; z++) {
@@ -273,13 +327,10 @@ void Chunk::GenerateTerrain() {
 
   FillSkyLight();
 
-  m_generatedTerrain = true;
-}
-
-void Chunk::RemoveNeighbor(glm::ivec2 chunkCoord) {
-  int diffX = chunkCoord.x - m_chunkCoord.x;
-  int diffZ = chunkCoord.y - m_chunkCoord.y;
-  m_neighbors[GetNeighborIndex(diffX * 16, diffZ * 16)] = nullptr;
+  {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    m_generatedTerrain = true;
+  }
 }
 
 void Chunk::GenerateMeshForSubchunk(int i) {
@@ -343,6 +394,16 @@ void Chunk::MarkPositionAndNeighborsDirty(glm::ivec3 localPosition) {
   }
 }
 
+void Chunk::MarkPositionAndAllNeighborsDirty(glm::ivec3 localPosition) {
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <= 1; y++) {
+      for (int z = -1; z <= 1; z++) {
+        MarkPositionDirty(localPosition + glm::ivec3 { x, y, z });
+      }
+    }
+  }
+}
+
 void Chunk::CleanDirty() {
   for (int i : m_dirtySubchunks) {
     GenerateMeshForSubchunk(i);
@@ -357,7 +418,7 @@ void Chunk::CleanDirty() {
 
 void Chunk::Draw(Shader& shader) const {
   // TODO: Use some sort of frustum culling to prevent non-visible chunks from being drawn
-  if (/*!m_active ||*/ !m_appliedMesh) return;
+  if (!m_active || !m_appliedMesh) return;
 
   glm::mat4 model(1.0f);
   const DebugSettings& settings = DebugSettings::instance;
@@ -378,9 +439,10 @@ void Chunk::Draw(Shader& shader) const {
 
 char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
+    std::shared_lock<std::shared_mutex> lock(m_blockstateMutex);
     return m_blockstates[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    Chunk* neighbor = GetNeighbor(localX, localZ);
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return Blocks::VOID_AIR;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
@@ -391,9 +453,10 @@ char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
 
 char Chunk::GetLightAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
+    std::shared_lock<std::shared_mutex> lock(m_lightMutex);
     return m_lights[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    Chunk* neighbor = GetNeighbor(localX, localZ);
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return 0;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
@@ -417,9 +480,10 @@ float Chunk::GetFixedLightAt(int localX, int localY, int localZ) {
 
 void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
+    std::unique_lock<std::shared_mutex> lock(m_lightMutex);
     m_lights[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    Chunk* neighbor = GetNeighbor(localX, localZ);
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
@@ -429,9 +493,10 @@ void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
 
 void Chunk::SetBlockstateAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
+    std::unique_lock<std::shared_mutex> lock(m_blockstateMutex);
     m_blockstates[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
-    Chunk* neighbor = GetNeighbor(localX, localZ);
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
@@ -443,19 +508,29 @@ void Chunk::SetActive(bool value) {
   m_active = value;
 }
 
+void Chunk::InvalidateMesh() {
+  std::lock_guard<std::mutex> lock(m_stateMutex);
+  m_generatedMesh = false;
+  m_appliedMesh = false;
+}
+
 bool Chunk::HasAppliedMesh() const {
+  std::lock_guard<std::mutex> lock(m_stateMutex);
   return m_appliedMesh;
 }
 
 bool Chunk::HasGeneratedTerrain() const {
+  std::lock_guard<std::mutex> lock(m_stateMutex);
   return m_generatedTerrain;
 }
 
 bool Chunk::HasGeneratedMesh() const {
+  std::lock_guard<std::mutex> lock(m_stateMutex);
   return m_generatedMesh;
 }
 
 bool Chunk::HasPropagatedLighting() const {
+  std::lock_guard<std::mutex> lock(m_stateMutex);
   return m_propagatedLighting;
 }
 

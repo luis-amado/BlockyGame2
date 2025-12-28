@@ -27,5 +27,5 @@ public:
 
 private:
   static Registry<Block> s_registry;
-  static std::optional<TextureAtlas> s_atlas;
+  static std::unique_ptr<TextureAtlas> s_atlas;
 };

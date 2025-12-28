@@ -7,12 +7,15 @@
 #include "util/GlmExtensions.h"
 #include "util/ClassMacros.h"
 #include "util/threadsafe/ThreadSafeQueue.h"
+#include "util/threadsafe/ThreadSafePriorityQueue.h"
 #include "util/threadsafe/ThreadSafeUnorderedMap.h"
 #include "rendering/Shader.h"
 #include "Chunk.h"
 #include "../entity/Entity.h"
 
-using DistanceToChunk = std::pair<int, Chunk*>;
+using DistanceToChunk = std::pair<long, std::weak_ptr<Chunk>>;
+
+int operator<(const std::weak_ptr<Chunk>& a, const std::weak_ptr<Chunk>& b);
 
 class World {
 public:
@@ -32,6 +35,7 @@ public:
   int GetChunksToGenerateTerrainSize() const;
   int GetChunksToLightSize() const;
   int GetChunksToGenerateMeshSize() const;
+  const Entity& GetTrackingEntity() const;
 
   void MarkChunkDirty(Chunk* chunk);
 
@@ -48,21 +52,22 @@ public:
 
   void UpdateBlockstateAt(int globalX, int globalY, int globalZ, char blockstate);
 
-  Chunk* GetChunkAtBlockPos(int globalX, int globalZ) const;
+  std::shared_ptr<Chunk> GetChunkAtBlockPos(int globalX, int globalZ) const;
 
   void CleanDirtyChunks();
+  void RemeshAllChunks();
 
   void Draw() const;
 
-  Chunk* GetChunkAt(glm::ivec2 chunkCoord) const;
+  std::shared_ptr<Chunk> GetChunkAt(glm::ivec2 chunkCoord) const;
 private:
-  ThreadSafeUnorderedMap<glm::ivec2, Chunk*, IVec2Hash, IVec2Equal> m_chunks;
+  ThreadSafeUnorderedMap<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash, IVec2Equal> m_chunks;
 
   std::priority_queue<DistanceToChunk, std::vector<DistanceToChunk>, std::greater<DistanceToChunk>> m_chunkGenerationQueue;
-  ThreadSafeQueue<Chunk*> m_chunksToGenerateTerrain;
-  ThreadSafeQueue<Chunk*> m_chunksToPropagateLighting;
-  ThreadSafeQueue<Chunk*> m_chunksToGenerateMesh;
-  ThreadSafeQueue<Chunk*> m_chunksToApplyMesh;
+  ThreadSafeQueue<std::weak_ptr<Chunk>> m_chunksToGenerateTerrain;
+  ThreadSafeQueue<std::weak_ptr<Chunk>> m_chunksToPropagateLighting;
+  ThreadSafeQueue<std::weak_ptr<Chunk>> m_chunksToGenerateMesh;
+  ThreadSafeQueue<std::weak_ptr<Chunk>> m_chunksToApplyMesh;
 
   // Chunks to immediately remesh (caller function must have caused the dirtyness)
   std::unordered_set<Chunk*> m_dirtyChunks;
@@ -70,7 +75,7 @@ private:
   std::vector<std::thread> m_workerThreads;
   const Entity& m_trackingEntity;
 
-  Chunk* GetOrCreateChunkAt(glm::ivec2 chunkCoord);
+  std::shared_ptr<Chunk> GetOrCreateChunkAt(glm::ivec2 chunkCoord);
 
   bool IsInsideWorld(int globalX, int globalY, int globalZ) const;
 

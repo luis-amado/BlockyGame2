@@ -11,7 +11,7 @@ public:
   void AddImageFile(const std::string& fileName, const std::string& extension = ".png");
   void AddImageBytes(const std::string& imageName, std::vector<unsigned char> bytes, int size);
 
-  TextureAtlas Build() const;
+  std::unique_ptr<TextureAtlas> Build() const;
 
 private:
 

@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 
 #include "VertexArray.h"
+#include "ResourceGraveyard.h"
+#include "util/Logging.h"
 
 VertexArray::VertexArray() {
   glGenVertexArrays(1, &m_vao);
@@ -10,7 +12,8 @@ VertexArray::VertexArray() {
 
 VertexArray::~VertexArray() {
   if (m_vao != 0) {
-    glDeleteVertexArrays(1, &m_vao);
+    ResourceGraveyard::GetInstance().QueueVAOForDeletion(m_vao);
+    m_vao = 0;
   }
 }
 

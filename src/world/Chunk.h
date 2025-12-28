@@ -8,6 +8,7 @@
 #include "util/ClassMacros.h"
 #include "rendering/Mesh.h"
 #include "rendering/Shader.h"
+#include <shared_mutex>
 
 class World;
 
@@ -16,13 +17,11 @@ struct MeshData {
   std::vector<unsigned int> indices;
 };
 
-class Chunk {
+class Chunk : public std::enable_shared_from_this<Chunk> {
 public:
-  // I really should not be copying chunks
   DELETE_COPY(Chunk);
 
   Chunk(glm::ivec2 chunkCoord, World& world);
-  ~Chunk();
 
   void GenerateTerrain();
   void GenerateMesh();
@@ -36,9 +35,9 @@ public:
   // Indicate that the mesh at a certain position is not accurate anymore
   void MarkPositionDirty(glm::ivec3 localPosition);
   void MarkPositionAndNeighborsDirty(glm::ivec3 localPosition);
+  void MarkPositionAndAllNeighborsDirty(glm::ivec3 localPosition);
   // Recalculate and apply the meshes at dirty subchunks
   void CleanDirty();
-
 
   void Draw(Shader& shader) const;
   char GetBlockstateAt(int localX, int localY, int localZ);
@@ -48,6 +47,8 @@ public:
   void SetBlockstateAt(int localX, int localY, int localZ, char value);
 
   void SetActive(bool value);
+
+  void InvalidateMesh();
 
   bool HasAppliedMesh() const;
   bool HasGeneratedTerrain() const;
@@ -66,18 +67,25 @@ public:
   std::atomic<bool> a_queuedTerrain = false;
   std::atomic<bool> a_queuedMesh = false;
   std::atomic<bool> a_queuedLighting = false;
-  std::atomic<bool> a_inUse = false;
 
 private:
-  std::vector<Chunk*> m_neighbors;
+  std::mutex m_neighborMutex;
+  std::vector<std::weak_ptr<Chunk>> m_neighbors;
   glm::ivec2 m_chunkCoord;
+
+  std::shared_mutex m_blockstateMutex;
   std::vector<char> m_blockstates;
+
+  std::shared_mutex m_lightMutex;
   std::vector<char> m_lights;
+
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;
   std::unordered_set<int> m_dirtySubchunks;
   World& m_world;
 
+  // TODO: Make a state enum variable
+  mutable std::mutex m_stateMutex;
   bool m_generatedTerrain = false;
   bool m_propagatedLighting = false;
   bool m_generatedMesh = false;
@@ -85,13 +93,12 @@ private:
 
   bool m_active = false;
 
-  void RemoveNeighbor(glm::ivec2 chunkCoord);
-
   void GenerateMeshForSubchunk(int i);
   void LightSpreadingDFS(int x, int y, int z, char value);
   void LightUpdatingDFS(int x, int y, int z);
+  void LightRemovingDFS(int x, int y, int z, char value, char startingValue);
   int GetNeighborIndex(int localX, int localZ) const;
-  Chunk* GetNeighbor(int localX, int localZ);
+  std::shared_ptr<Chunk> GetNeighbor(int localX, int localZ);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;

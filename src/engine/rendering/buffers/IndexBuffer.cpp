@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "ResourceGraveyard.h"
 
 #include "IndexBuffer.h"
 
@@ -16,7 +17,8 @@ IndexBuffer::IndexBuffer(unsigned int* indices, size_t size) {
 
 IndexBuffer::~IndexBuffer() {
   if (m_ebo != 0) {
-    glDeleteBuffers(1, &m_ebo);
+    ResourceGraveyard::GetInstance().QueueVBOForDeletion(m_ebo);
+    m_ebo = 0;
   }
 }
 

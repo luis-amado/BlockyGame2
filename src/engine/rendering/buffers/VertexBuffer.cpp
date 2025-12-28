@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include "VertexBuffer.h"
+#include "ResourceGraveyard.h"
 
 VertexBuffer::VertexBuffer() {
   glGenBuffers(1, &m_vbo);
@@ -16,7 +17,8 @@ VertexBuffer::VertexBuffer(float* vertices, size_t size) {
 
 VertexBuffer::~VertexBuffer() {
   if (m_vbo != 0) {
-    glDeleteBuffers(1, &m_vbo);
+    ResourceGraveyard::GetInstance().QueueVBOForDeletion(m_vbo);
+    m_vbo = 0;
   }
 }
 

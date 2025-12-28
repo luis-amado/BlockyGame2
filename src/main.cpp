@@ -21,6 +21,7 @@
 #include "debug/DebugShapes.h"
 #include "entity/PlayerEntity.h"
 #include "engine/rendering/ShaderLibrary.h"
+#include "engine/rendering/buffers/ResourceGraveyard.h"
 
 #include "world/World.h"
 
@@ -96,6 +97,7 @@ int main() {
   }
 
   shaders.Clear();
+  ResourceGraveyard::GetInstance().Flush();
 
   return 0;
 }
