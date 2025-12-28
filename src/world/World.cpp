@@ -22,20 +22,8 @@ glm::ivec2 chunkOffsetsWithCorners[] = { {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0
 long GetDistanceToChunk(int diffX, int diffZ) {
   return std::abs(diffX) * std::abs(diffX) + std::abs(diffZ) * std::abs(diffZ);
 }
-long GetDistanceToChunk(glm::ivec2 chunkCoord, glm::ivec2 playerCoord) {
-  int diffX = chunkCoord.x - playerCoord.x;
-  int diffZ = chunkCoord.y - playerCoord.y;
-  return std::abs(diffX) * std::abs(diffX) + std::abs(diffZ) * std::abs(diffZ);
-}
-long GetDistanceToChunk(glm::ivec2 chunkCoord, World& world) {
-  glm::dvec3 playerPos = world.GetTrackingEntity().GetPosition();
-  return GetDistanceToChunk(chunkCoord, world.GetChunkCoord(playerPos.x, playerPos.z));
-}
-} // namespace
 
-int operator<(const std::weak_ptr<Chunk>& a, const std::weak_ptr<Chunk>& b) {
-  return 1;
-}
+} // namespace
 
 void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
@@ -90,8 +78,33 @@ void chunkLightingWorker(World& world, int workerId) {
     if (!world.m_chunksToPropagateLighting.pop(weakChunk)) break;
 
     if (auto chunk = weakChunk.lock()) {
+
+      // Safety snapshot
+      std::vector<std::shared_ptr<Chunk>> neighborhoodGuard;
+      neighborhoodGuard.reserve(9);
+      neighborhoodGuard.push_back(chunk);
+
+      Chunk::ChunkNeighborhood context;
+      context.center = chunk.get();
+
+      for (int x = -1; x <= 1; ++x) {
+        for (int z = -1; z <= 1; ++z) {
+          if (x == 0 && z == 0) continue;
+
+          auto neighbor = chunk->GetNeighbor(x * Chunk::CHUNK_WIDTH, z * Chunk::CHUNK_WIDTH);
+          if (neighbor) {
+            neighborhoodGuard.push_back(neighbor);
+            // Store raw pointer in the correct slot for your index logic
+            int index = chunk->GetNeighborIndex(x * Chunk::CHUNK_WIDTH, z * Chunk::CHUNK_WIDTH);
+            context.neighbors[index] = neighbor.get();
+          } else {
+            // Handle missing neighbor (optional: set to nullptr)
+          }
+        }
+      }
+
       if (!chunk->HasPropagatedLighting()) {
-        chunk->PropagateLighting();
+        chunk->PropagateLighting(context);
       }
 
       // Check if a neighboring chunk, or this one, is ready for meshing
@@ -251,7 +264,7 @@ void World::Update() {
       // Queue the chunk for generation if it hasnt been already queued
       if (!chunk->m_queuedGeneration) {
         long distance = GetDistanceToChunk(x, z);
-        m_chunkGenerationQueue.push({ distance, chunk });
+        m_chunkGenerationQueue.push({ distance, chunk.get() });
         chunk->m_queuedGeneration = true;
       }
     }
@@ -263,19 +276,17 @@ void World::Update() {
     DistanceToChunk distanceToChunk = m_chunkGenerationQueue.top();
     m_chunkGenerationQueue.pop();
 
-    std::weak_ptr<Chunk> weakCenterChunk = distanceToChunk.second;
-    if (auto centerChunk = weakCenterChunk.lock()) {
-      glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
+    Chunk* centerChunk = distanceToChunk.second;
+    glm::ivec2 centerCoord = centerChunk->GetChunkCoord();
 
-      // We need to generate the terrain for this chunk and all other adjacent chunks
-      for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
-        glm::ivec2 chunkCoord = centerCoord + offset;
-        std::shared_ptr<Chunk> chunk = GetOrCreateChunkAt(chunkCoord);
+    // We need to generate the terrain for this chunk and all other adjacent chunks
+    for (const glm::ivec2& offset : chunkOffsetsWithCorners) {
+      glm::ivec2 chunkCoord = centerCoord + offset;
+      std::shared_ptr<Chunk> chunk = GetOrCreateChunkAt(chunkCoord);
 
-        if (!chunk->a_queuedTerrain.exchange(true)) {
-          // long distance = GetDistanceToChunk(chunkCoord, playerChunk);
-          m_chunksToGenerateTerrain.push(chunk);
-        }
+      if (!chunk->a_queuedTerrain.exchange(true)) {
+        // long distance = GetDistanceToChunk(chunkCoord, playerChunk);
+        m_chunksToGenerateTerrain.push(chunk);
       }
     }
   }

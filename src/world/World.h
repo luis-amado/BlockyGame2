@@ -13,9 +13,7 @@
 #include "Chunk.h"
 #include "../entity/Entity.h"
 
-using DistanceToChunk = std::pair<long, std::weak_ptr<Chunk>>;
-
-int operator<(const std::weak_ptr<Chunk>& a, const std::weak_ptr<Chunk>& b);
+using DistanceToChunk = std::pair<long, Chunk*>;
 
 class World {
 public:
