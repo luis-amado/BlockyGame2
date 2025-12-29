@@ -57,11 +57,11 @@ void Chunk::PropagateLighting() {
   }
 }
 
-void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, char newLight) {
+void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, char newLight, bool solidBlock) {
   char oldLight = GetLightAt(XYZ(localPosition));
   SetLightAt(XYZ(localPosition), newLight);
 
-  if (newLight < oldLight) {
+  if (solidBlock) {
     // Light removal dfs
     LightRemovingDFS(XYZ(localPosition), newLight, oldLight);
   } else {

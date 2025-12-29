@@ -418,12 +418,13 @@ void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char block
   std::shared_ptr<Chunk> chunk = GetChunkAtBlockPos(globalX, globalZ);
   glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
   chunk->SetBlockstateAt(localCoords.x, localCoords.y, localCoords.z, blockstate);
+  const Block& block = Block::FromBlockstate(blockstate);
 
   // Mark block and neighbors as dirty (because they may need to adjust their meshes)
   chunk->MarkPositionAndNeighborsDirty(localCoords);
 
   // Recalculate lighting
-  chunk->PropagateLightingAtPos(localCoords, 0);
+  chunk->PropagateLightingAtPos(localCoords, 0, block.IsSolid());
 
   CleanDirtyChunks();
 }

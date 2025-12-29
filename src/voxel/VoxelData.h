@@ -15,4 +15,8 @@ public:
   static glm::ivec3 GetFaceOffset(Direction face);
 
   static const std::vector<glm::ivec3>& GetNeighborOffsetsAndOrigin();
+
+private:
+  static std::array<float, 4> GetCornerLightValues(int x, int y, int z, Direction face, Chunk& chunk);
+  static std::array<glm::ivec3, 9> GetOffset3x3(int x, int y, int z, Direction face);
 };

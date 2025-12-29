@@ -26,7 +26,7 @@ public:
   void GenerateTerrain();
   void GenerateMesh();
   void PropagateLighting();
-  void PropagateLightingAtPos(glm::ivec3 localPosition, char newLight);
+  void PropagateLightingAtPos(glm::ivec3 localPosition, char newLight, bool blockPlaced);
   void FillSkyLight();
   void ApplyMesh();
 
