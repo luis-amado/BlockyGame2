@@ -121,10 +121,7 @@ void chunkMeshGeneratorWorker(World& world, int workerId) {
     if (!world.m_chunksToGenerateMesh.pop(weakChunk)) break;
 
     if (auto chunk = weakChunk.lock()) {
-      glm::ivec2 chunkCoord = chunk->GetChunkCoord();
-
       chunk->GenerateMesh();
-      // long distance = GetDistanceToChunk(chunkCoord, world);
       world.m_chunksToApplyMesh.push(chunk);
     }
   }
@@ -445,7 +442,6 @@ void World::CleanDirtyChunks() {
 void World::RemeshAllChunks() {
   m_chunks.forEach([&](glm::ivec2 coord, std::shared_ptr<Chunk> chunk) {
     chunk->InvalidateMesh();
-    // long distance = GetDistanceToChunk(coord, *this);
     m_chunksToGenerateMesh.push(chunk);
   });
 }

@@ -146,7 +146,7 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
       int newZ = z + offset.z;
 
       char currLight = GetLightAt(newX, newY, newZ);
-      if (currLight < maxLight - 1) {
+      if (currLight < maxLight - 1 || (maxLight == 15 && offset.y < 0 && currLight < 15)) {
         LightUpdatingDFS(newX, newY, newZ);
       }
     }
