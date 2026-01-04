@@ -9,6 +9,7 @@
 #include "rendering/Mesh.h"
 #include "rendering/Shader.h"
 #include <shared_mutex>
+#include "../init/Blocks.h"
 
 class World;
 
@@ -40,11 +41,11 @@ public:
   void CleanDirty();
 
   void Draw(Shader& shader) const;
-  char GetBlockstateAt(int localX, int localY, int localZ);
+  Blockstate GetBlockstateAt(int localX, int localY, int localZ);
   char GetLightAt(int localX, int localY, int localZ);
   float GetFixedLightAt(int localX, int localY, int localZ);
   void SetLightAt(int localX, int localY, int localZ, char value);
-  void SetBlockstateAt(int localX, int localY, int localZ, char value);
+  void SetBlockstateAt(int localX, int localY, int localZ, Blockstate value);
 
   void SetActive(bool value);
 
@@ -74,7 +75,7 @@ private:
   std::vector<std::weak_ptr<Chunk>> m_neighbors;
   glm::ivec2 m_chunkCoord;
 
-  std::vector<char> m_blockstates;
+  std::vector<Blockstate> m_blockstates;
   std::vector<char> m_lights;
 
   std::vector<Mesh> m_subchunkMeshes;

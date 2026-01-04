@@ -19,11 +19,11 @@ const BlockTextures Block::GetTextures() const {
   return m_textures;
 }
 
-char Block::GetBlockstate() const {
+Blockstate Block::GetBlockstate() const {
   return m_blockstate;
 }
 
-Block::operator char() const {
+Block::operator Blockstate() const {
   return m_blockstate;
 }
 
@@ -45,10 +45,19 @@ Block& Block::Air() {
   return *this;
 }
 
+Block& Block::LightLevel(char lightLevel) {
+  m_lightLevel = lightLevel;
+  return *this;
+}
+
 bool Block::IsSolid() const {
   return m_isSolid;
 }
 
 bool Block::IsAir() const {
   return m_isAir;
+}
+
+char Block::GetLightLevel() const {
+  return m_lightLevel;
 }

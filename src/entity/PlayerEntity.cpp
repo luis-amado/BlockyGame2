@@ -124,6 +124,41 @@ double PlayerEntity::GetSpeedMultiplier() const {
 }
 
 void PlayerEntity::Update(World& world) {
+
+  // Update rotation
+  if (!Input::IsCursorShown()) {
+
+    glm::dvec2 rot = GetRotation();
+
+    if (m_zoomed) {
+      m_rotationVelocity.y += Input::GetMouseDX() * sensitivity * 1.2;
+      m_rotationVelocity.x += Input::GetMouseDY() * sensitivity * 1.2;
+
+      m_rotationVelocity.y = MathUtil::Lerp(m_rotationVelocity.y, 0.0, Time::deltaTime / 0.8);
+      m_rotationVelocity.x = MathUtil::Lerp(m_rotationVelocity.x, 0.0, Time::deltaTime / 0.8);
+
+      rot.y += m_rotationVelocity.y * Time::deltaTime;
+      rot.x += m_rotationVelocity.x * Time::deltaTime;
+    } else {
+      m_rotationVelocity.x = 0.0;
+      m_rotationVelocity.y = 0.0;
+      rot.y += Input::GetMouseDX() * sensitivity;
+      rot.x += Input::GetMouseDY() * sensitivity;
+    }
+
+    // Normalize camera rotation
+    rot.y = std::fmod(rot.y, 360.0);
+
+    // Lock max vertical rotation to straight up and straight down
+    if (rot.x > 90.0f) {
+      rot.x = 90.0f;
+    } else if (rot.x < -90.0f) {
+      rot.x = -90.0f;
+    }
+
+    SetRotation(rot);
+  }
+
   // Update position relative to its forward direction
   glm::dvec3 forward = GetForwardVector();
   glm::dvec3 right = GetRightVector(forward);
@@ -207,59 +242,27 @@ void PlayerEntity::Update(World& world) {
   m_velocity.x = newVelocity.x;
   m_velocity.z = newVelocity.z;
 
-  // Update rotation
-  if (!Input::IsCursorShown()) {
-
-    glm::dvec2 rot = GetRotation();
-
-    if (m_zoomed) {
-      m_rotationVelocity.y += Input::GetMouseDX() * sensitivity * 1.2;
-      m_rotationVelocity.x += Input::GetMouseDY() * sensitivity * 1.2;
-
-      m_rotationVelocity.y = MathUtil::Lerp(m_rotationVelocity.y, 0.0, Time::deltaTime / 0.8);
-      m_rotationVelocity.x = MathUtil::Lerp(m_rotationVelocity.x, 0.0, Time::deltaTime / 0.8);
-
-      rot.y += m_rotationVelocity.y * Time::deltaTime;
-      rot.x += m_rotationVelocity.x * Time::deltaTime;
-    } else {
-      m_rotationVelocity.x = 0.0;
-      m_rotationVelocity.y = 0.0;
-      rot.y += Input::GetMouseDX() * sensitivity;
-      rot.x += Input::GetMouseDY() * sensitivity;
-    }
-
-    // Normalize camera rotation
-    rot.y = std::fmod(rot.y, 360.0);
-
-    // Lock max vertical rotation to straight up and straight down
-    if (rot.x > 90.0f) {
-      rot.x = 90.0f;
-    } else if (rot.x < -90.0f) {
-      rot.x = -90.0f;
-    }
-
-    SetRotation(rot);
-  }
-
   PhysicsUpdate(world);
-
-  UpdateLookingAt(world);
 
   // Player interactions with the world
   // Physics calculations have been settled at this point
+
+  UpdateLookingAt(world);
+
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_LEFT) && m_lookingAtBlock.has_value()) {
     world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
   }
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
+    char blockToPlace = Blocks::GLOWSTONE.GetBlockstate();
     if (m_ghost) {
-      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, Blocks::STONE.GetBlockstate());
+      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, blockToPlace);
     } else {
       BoundingBox bb = GetBoundingBox();
       AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
       AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
 
       if (!playerAABB.IsColliding(blockAABB)) {
-        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, Blocks::STONE.GetBlockstate());
+        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, blockToPlace);
       }
     }
   }

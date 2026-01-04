@@ -19,6 +19,7 @@ public:
   static const Block& BEDROCK;
   static const Block& OAK_LOG;
   static const Block& OAK_LEAVES;
+  static const Block& GLOWSTONE;
 
   static void InitializeBlocks();
   static void GenerateBlockAtlas();

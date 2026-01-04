@@ -12,6 +12,7 @@
 #include "rendering/Shader.h"
 #include "Chunk.h"
 #include "../entity/Entity.h"
+#include "../init/Blocks.h"
 
 using DistanceToChunk = std::pair<long, Chunk*>;
 
@@ -38,8 +39,8 @@ public:
   void MarkChunkDirty(Chunk* chunk);
 
   void MarkPositionDirty(const glm::ivec3& globalPosition) const;
-  char GetBlockstateAt(int globalX, int globalY, int globalZ) const;
-  char GetBlockstateAt(const glm::ivec3& globalCoords) const;
+  Blockstate GetBlockstateAt(int globalX, int globalY, int globalZ) const;
+  Blockstate GetBlockstateAt(const glm::ivec3& globalCoords) const;
   char GetLightAt(int globalX, int globalY, int globalZ) const;
   void SetLightAt(int globalX, int globalY, int globalZ, char value);
   glm::ivec2 GetChunkCoord(int globalX, int globalZ) const;
@@ -48,7 +49,7 @@ public:
 
   void RemoveChunk(glm::ivec2 chunkCoord);
 
-  void UpdateBlockstateAt(int globalX, int globalY, int globalZ, char blockstate);
+  void UpdateBlockstateAt(int globalX, int globalY, int globalZ, Blockstate blockstate);
 
   std::shared_ptr<Chunk> GetChunkAtBlockPos(int globalX, int globalZ) const;
 

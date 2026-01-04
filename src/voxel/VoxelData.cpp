@@ -9,6 +9,7 @@
 
 namespace {
 
+// TODO: Fix this function, it doesn't really work. Honestly, look up a better way to do ambient lighting.
 float NormalizeAmbientLighting(float l1, float l2, float l3, float l4) {
   std::array<float*, 4> lightValues = { &l1, &l2, &l3, &l4 };
   float nonNegativeAverage = 0.0f;
@@ -38,7 +39,11 @@ float NormalizeAmbientLighting(float l1, float l2, float l3, float l4) {
 
 }  // namespace
 
+// This function gets called millions of times. Once per each rendered face when generating chunks
+// After adding proper data blockstates, this wont be needed
 std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk, Direction face, const Block& block) {
+
+  // normalize coordinates
   int subchunkY = MathUtil::Mod(y, Chunk::SUBCHUNK_HEIGHT);
   float x0 = x, x1 = x + 1;
   float y0 = subchunkY, y1 = subchunkY + 1;
@@ -131,6 +136,15 @@ const std::vector<glm::ivec3>& VoxelData::GetNeighborOffsetsAndOrigin() {
 }
 
 std::array<float, 4> VoxelData::GetCornerLightValues(int x, int y, int z, Direction face, Chunk& chunk) {
+
+  /*
+  | 00 | 10 | 20 |
+  ----------------
+  | 01 | 11 | 21 |
+  ----------------
+  | 02 | 12 | 22 |
+  */
+
   std::array<glm::ivec3, 9> offsets = GetOffset3x3(x, y, z, face);
   if (DebugSettings::instance.smoothLighting) {
     float l00 = chunk.GetFixedLightAt(XYZ(offsets[0]));

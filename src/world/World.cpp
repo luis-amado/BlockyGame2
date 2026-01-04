@@ -314,17 +314,17 @@ void World::MarkPositionDirty(const glm::ivec3& globalPosition) const {
   GetChunkAtBlockPos(globalPosition.x, globalPosition.z)->MarkPositionDirty(ToLocalCoords(globalPosition));
 }
 
-char World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
+Blockstate World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
   if (IsInsideWorld(globalX, globalY, globalZ)) {
     glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
     glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
     return GetChunkAt(chunkCoord)->GetBlockstateAt(localCoords.x, localCoords.y, localCoords.z);
   } else {
-    return Blocks::VOID_AIR;
+    return Blocks::VOID_AIR.GetBlockstate();
   }
 }
 
-char World::GetBlockstateAt(const glm::ivec3& globalCoords) const {
+Blockstate World::GetBlockstateAt(const glm::ivec3& globalCoords) const {
   return GetBlockstateAt(globalCoords.x, globalCoords.y, globalCoords.z);
 }
 
@@ -410,7 +410,7 @@ void World::RemoveChunk(glm::ivec2 chunkCoord) {
   m_chunks.erase(chunkCoord);
 }
 
-void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, char blockstate) {
+void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, Blockstate blockstate) {
 
   glm::ivec3 position = { globalX, globalY, globalZ };
   std::unordered_set<Chunk*> dirtyChunks;

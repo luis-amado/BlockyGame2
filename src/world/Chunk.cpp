@@ -431,9 +431,8 @@ void Chunk::Draw(Shader& shader) const {
   }
 }
 
-char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
+Blockstate Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    // std::shared_lock<std::shared_mutex> lock(m_blockstateMutex);
     return m_blockstates[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
@@ -447,7 +446,6 @@ char Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
 
 char Chunk::GetLightAt(int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    // std::shared_lock<std::shared_mutex> lock(m_lightMutex);
     return m_lights[PosToIndex(localX, localY, localZ)];
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
@@ -474,7 +472,6 @@ float Chunk::GetFixedLightAt(int localX, int localY, int localZ) {
 
 void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    // std::unique_lock<std::shared_mutex> lock(m_lightMutex);
     m_lights[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
@@ -485,9 +482,8 @@ void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
   }
 }
 
-void Chunk::SetBlockstateAt(int localX, int localY, int localZ, char value) {
+void Chunk::SetBlockstateAt(int localX, int localY, int localZ, Blockstate value) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    // std::unique_lock<std::shared_mutex> lock(m_blockstateMutex);
     m_blockstates[PosToIndex(localX, localY, localZ)] = value;
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);

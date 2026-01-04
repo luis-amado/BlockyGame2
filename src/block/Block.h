@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include "BlockTextures.h"
 
+using Blockstate = unsigned char;
+
 class Block : public RegistryItem {
 public:
   Block() = default;
@@ -11,8 +13,8 @@ public:
   Block(const std::string& registryName, BlockTextures textures);
 
   const BlockTextures GetTextures() const;
-  char GetBlockstate() const;
-  operator char() const;
+  Blockstate GetBlockstate() const;
+  operator Blockstate() const;
 
   void Initialize();
 
@@ -20,15 +22,20 @@ public:
 
   Block& NotSolid();
   Block& Air();
+  Block& LightLevel(char lightLevel);
 
   bool IsSolid() const;
   bool IsAir() const;
+  char GetLightLevel() const;
 
 private:
   BlockTextures m_textures;
-  char m_blockstate;
+  Blockstate m_blockstate;
+
+  // Properties
   bool m_isSolid = true;
   bool m_isAir = false;
+  char m_lightLevel = 0;
 
   static char s_blockstateIndex;
   static std::unordered_map<char, Block*> s_blockstateMap;
