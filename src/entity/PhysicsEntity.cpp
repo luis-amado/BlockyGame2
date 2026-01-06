@@ -54,7 +54,7 @@ void PhysicsEntity::PhysicsUpdate(const World& world) {
   glm::dvec3 frameVelocity = m_velocity * Time::deltaTime;
 
   if (!m_disableCollision) {
-    // You could slide up to three timesd (3 axis)
+    // You could slide up to three times (3 axes)
     for (int its = 0; its < 3; its++) {
       AABB entityAABB = AABB::CreateFromBottomCenter(pos, boundingBox.width, boundingBox.height);
       AxisRanges blockRanges = entityAABB.CalculateBlocksInsideBox(frameVelocity);

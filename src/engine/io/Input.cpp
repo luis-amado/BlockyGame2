@@ -118,7 +118,7 @@ bool Input::IsJustPressed(int input) {
 }
 
 bool Input::IsJustDoublePressed(int input) {
-  return IsJustPressed(input) && s_timeSinceLastInput.count(input) && s_timeSinceLastInput[input] > 0.02f;
+  return IsJustPressed(input) && s_timeSinceLastInput.count(input) && s_timeSinceLastInput[input] > 0.03f;
 }
 
 void Input::Init(Window* window) {
