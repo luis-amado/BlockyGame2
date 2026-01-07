@@ -6,6 +6,7 @@
 #include "Direction.h"
 #include "../block/Block.h"
 #include "rendering/textures/TextureAtlas.h"
+#include "../world/Chunk.h"
 
 class Chunk;
 
@@ -17,6 +18,6 @@ public:
   static const std::vector<glm::ivec3>& GetNeighborOffsetsAndOrigin();
 
 private:
-  static std::array<float, 4> GetCornerLightValues(int x, int y, int z, Direction face, Chunk& chunk);
+  static std::array<float, 4> GetCornerLightValues(int x, int y, int z, LightType type, Direction face, Chunk& chunk);
   static std::array<glm::ivec3, 9> GetOffset3x3(int x, int y, int z, Direction face);
 };

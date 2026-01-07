@@ -52,9 +52,9 @@ bool Mesh::HasData() const {
 void Mesh::SetupAttributes() const {
   // 3D Mesh is setup with vertex positions and texture coordinates
   AttributeBuilder builder;
-  builder.AddAttribute(3);
-  builder.AddAttribute(2);
-  builder.AddAttribute(1);
+  builder.AddAttribute(3); // position
+  builder.AddAttribute(2); // texture coordinates
+  builder.AddAttribute(2); // sky light and block light
 
   builder.SetupAttributes(m_vertexArray);
 }

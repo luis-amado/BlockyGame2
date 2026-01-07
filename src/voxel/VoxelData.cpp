@@ -52,54 +52,55 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
   const std::string& textureName = block.GetTextures()[face];
   TextureAtlas::TextureCoords tex = Blocks::GetAtlas().GetTextureCoords(textureName);
 
-  std::array<float, 4> cornerLights = GetCornerLightValues(x, y, z, face, chunk);
+  std::array<float, 4> skyCornerLights = GetCornerLightValues(x, y, z, LightType::SKY, face, chunk);
+  std::array<float, 4> blockCornerLights = GetCornerLightValues(x, y, z, LightType::BLOCK, face, chunk);
   switch (face) {
   case Direction::SOUTH: {
     return {
-      x0, y1, z1, tex.x0, tex.y1, cornerLights[0],
-      x0, y0, z1, tex.x0, tex.y0, cornerLights[1],
-      x1, y0, z1, tex.x1, tex.y0, cornerLights[2],
-      x1, y1, z1, tex.x1, tex.y1, cornerLights[3]
+      x0, y1, z1, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x0, y0, z1, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x1, y0, z1, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x1, y1, z1, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   case Direction::NORTH: {
     return {
-      x1, y1, z0, tex.x0, tex.y1, cornerLights[0],
-      x1, y0, z0, tex.x0, tex.y0, cornerLights[1],
-      x0, y0, z0, tex.x1, tex.y0, cornerLights[2],
-      x0, y1, z0, tex.x1, tex.y1, cornerLights[3]
+      x1, y1, z0, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x1, y0, z0, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x0, y0, z0, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x0, y1, z0, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   case Direction::EAST: {
     return {
-      x1, y1, z1, tex.x0, tex.y1, cornerLights[0],
-      x1, y0, z1, tex.x0, tex.y0, cornerLights[1],
-      x1, y0, z0, tex.x1, tex.y0, cornerLights[2],
-      x1, y1, z0, tex.x1, tex.y1, cornerLights[3]
+      x1, y1, z1, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x1, y0, z1, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x1, y0, z0, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x1, y1, z0, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   case Direction::WEST: {
     return {
-      x0, y1, z0, tex.x0, tex.y1, cornerLights[0],
-      x0, y0, z0, tex.x0, tex.y0, cornerLights[1],
-      x0, y0, z1, tex.x1, tex.y0, cornerLights[2],
-      x0, y1, z1, tex.x1, tex.y1, cornerLights[3]
+      x0, y1, z0, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x0, y0, z0, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x0, y0, z1, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x0, y1, z1, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   case Direction::UP: {
     return {
-      x0, y1, z0, tex.x0, tex.y1, cornerLights[0],
-      x0, y1, z1, tex.x0, tex.y0, cornerLights[1],
-      x1, y1, z1, tex.x1, tex.y0, cornerLights[2],
-      x1, y1, z0, tex.x1, tex.y1, cornerLights[3]
+      x0, y1, z0, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x0, y1, z1, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x1, y1, z1, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x1, y1, z0, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   case Direction::DOWN: {
     return {
-      x1, y0, z0, tex.x0, tex.y1, cornerLights[0],
-      x1, y0, z1, tex.x0, tex.y0, cornerLights[1],
-      x0, y0, z1, tex.x1, tex.y0, cornerLights[2],
-      x0, y0, z0, tex.x1, tex.y1, cornerLights[3]
+      x1, y0, z0, tex.x0, tex.y1, skyCornerLights[0], blockCornerLights[0],
+      x1, y0, z1, tex.x0, tex.y0, skyCornerLights[1], blockCornerLights[1],
+      x0, y0, z1, tex.x1, tex.y0, skyCornerLights[2], blockCornerLights[2],
+      x0, y0, z0, tex.x1, tex.y1, skyCornerLights[3], blockCornerLights[3]
     };
   }
   }
@@ -135,7 +136,7 @@ const std::vector<glm::ivec3>& VoxelData::GetNeighborOffsetsAndOrigin() {
   return neighborOffsets;
 }
 
-std::array<float, 4> VoxelData::GetCornerLightValues(int x, int y, int z, Direction face, Chunk& chunk) {
+std::array<float, 4> VoxelData::GetCornerLightValues(int x, int y, int z, LightType type, Direction face, Chunk& chunk) {
 
   /*
   | 00 | 10 | 20 |
@@ -147,15 +148,15 @@ std::array<float, 4> VoxelData::GetCornerLightValues(int x, int y, int z, Direct
 
   std::array<glm::ivec3, 9> offsets = GetOffset3x3(x, y, z, face);
   if (DebugSettings::instance.smoothLighting) {
-    float l00 = chunk.GetFixedLightAt(XYZ(offsets[0]));
-    float l10 = chunk.GetFixedLightAt(XYZ(offsets[1]));
-    float l20 = chunk.GetFixedLightAt(XYZ(offsets[2]));
-    float l01 = chunk.GetFixedLightAt(XYZ(offsets[3]));
-    float l11 = chunk.GetFixedLightAt(XYZ(offsets[4]));
-    float l21 = chunk.GetFixedLightAt(XYZ(offsets[5]));
-    float l02 = chunk.GetFixedLightAt(XYZ(offsets[6]));
-    float l12 = chunk.GetFixedLightAt(XYZ(offsets[7]));
-    float l22 = chunk.GetFixedLightAt(XYZ(offsets[8]));
+    float l00 = chunk.GetFixedLightAt(type, XYZ(offsets[0]));
+    float l10 = chunk.GetFixedLightAt(type, XYZ(offsets[1]));
+    float l20 = chunk.GetFixedLightAt(type, XYZ(offsets[2]));
+    float l01 = chunk.GetFixedLightAt(type, XYZ(offsets[3]));
+    float l11 = chunk.GetFixedLightAt(type, XYZ(offsets[4]));
+    float l21 = chunk.GetFixedLightAt(type, XYZ(offsets[5]));
+    float l02 = chunk.GetFixedLightAt(type, XYZ(offsets[6]));
+    float l12 = chunk.GetFixedLightAt(type, XYZ(offsets[7]));
+    float l22 = chunk.GetFixedLightAt(type, XYZ(offsets[8]));
 
     bool s10 = Block::FromBlockstate(chunk.GetBlockstateAt(XYZ(offsets[1]))).IsSolid();
     bool s01 = Block::FromBlockstate(chunk.GetBlockstateAt(XYZ(offsets[3]))).IsSolid();
@@ -176,7 +177,7 @@ std::array<float, 4> VoxelData::GetCornerLightValues(int x, int y, int z, Direct
     };
   }
 
-  float centerLight = chunk.GetFixedLightAt(XYZ(offsets[4]));
+  float centerLight = chunk.GetFixedLightAt(type, XYZ(offsets[4]));
 
   return { centerLight, centerLight, centerLight, centerLight };
 }

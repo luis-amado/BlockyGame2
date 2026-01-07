@@ -17,6 +17,7 @@
 #include "rendering/textures/Texture.h"
 #include <optional>
 #include "util/Logging.h"
+#include "util/MathUtil.h"
 
 #include "../block/Block.h"
 #include "../init/Blocks.h"
@@ -107,7 +108,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
     ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
     ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
-    ImGui::Text("Light level: %d", world.GetLightAt(floor(playerPos.x), playerPos.y, floor(playerPos.z)));
+    ImGui::Text("Light level (S/B): %d / %d", world.GetLightAt(LightType::SKY, XYZ(playerPos)), world.GetLightAt(LightType::BLOCK, XYZ(playerPos)));
 
     ImGui::Text("");
 

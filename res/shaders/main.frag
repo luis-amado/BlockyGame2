@@ -2,7 +2,7 @@
 
 out vec4 fragColor;
 in vec2 texCoords;
-in float light;
+in vec2 light;
 
 uniform sampler2D tex;
 uniform bool nightVision;
@@ -10,11 +10,13 @@ uniform bool nightVision;
 float ambientLighting = 0.1;
 
 void main() {
+
+  float maxLight = max(light.x, light.y);
   
   if (nightVision) {
     ambientLighting = 0.8;
   }
-  float lightLevel = (light * (1 - ambientLighting)) + ambientLighting;
+  float lightLevel = (maxLight * (1 - ambientLighting)) + ambientLighting;
   vec4 texColor = texture(tex, texCoords);
 
   if (texColor.a < 0.5) discard;

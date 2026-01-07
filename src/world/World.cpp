@@ -324,25 +324,25 @@ Blockstate World::GetBlockstateAt(int globalX, int globalY, int globalZ) const {
   }
 }
 
-Blockstate World::GetBlockstateAt(const glm::ivec3& globalCoords) const {
-  return GetBlockstateAt(globalCoords.x, globalCoords.y, globalCoords.z);
+const Block& World::GetBlockAt(int globalX, int globalY, int globalZ) const {
+  return Block::FromBlockstate(GetBlockstateAt(globalX, globalY, globalZ));
 }
 
-char World::GetLightAt(int globalX, int globalY, int globalZ) const {
+char World::GetLightAt(LightType type, int globalX, int globalY, int globalZ) const {
   if (IsInsideWorld(globalX, globalY, globalZ)) {
     glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
     glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
-    return GetChunkAt(chunkCoord)->GetLightAt(localCoords.x, localCoords.y, localCoords.z);
+    return GetChunkAt(chunkCoord)->GetLightAt(type, localCoords.x, localCoords.y, localCoords.z);
   } else {
     return 0;
   }
 }
 
-void World::SetLightAt(int globalX, int globalY, int globalZ, char value) {
+void World::SetLightAt(LightType type, int globalX, int globalY, int globalZ, char value) {
   if (IsInsideWorld(globalX, globalY, globalZ)) {
     glm::ivec2 chunkCoord = GetChunkCoord(globalX, globalZ);
     glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
-    GetChunkAt(chunkCoord)->SetLightAt(localCoords.x, localCoords.y, localCoords.z, value);
+    GetChunkAt(chunkCoord)->SetLightAt(type, localCoords.x, localCoords.y, localCoords.z, value);
   }
 }
 
@@ -417,14 +417,16 @@ void World::UpdateBlockstateAt(int globalX, int globalY, int globalZ, Blockstate
 
   std::shared_ptr<Chunk> chunk = GetChunkAtBlockPos(globalX, globalZ);
   glm::ivec3 localCoords = ToLocalCoords(globalX, globalY, globalZ);
-  chunk->SetBlockstateAt(localCoords.x, localCoords.y, localCoords.z, blockstate);
-  const Block& block = Block::FromBlockstate(blockstate);
+
+  Blockstate oldBlockstate = chunk->GetBlockstateAt(XYZ(localCoords));
+
+  chunk->SetBlockstateAt(XYZ(localCoords), blockstate);
 
   // Mark block and neighbors as dirty (because they may need to adjust their meshes)
   chunk->MarkPositionAndNeighborsDirty(localCoords);
 
   // Recalculate lighting
-  chunk->PropagateLightingAtPos(localCoords, 0, block.IsSolid());
+  chunk->PropagateLightingAtPos(localCoords, oldBlockstate, blockstate);
 
   CleanDirtyChunks();
 }

@@ -21,7 +21,7 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, 0), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, { 0, 0 }), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 
 void Chunk::GenerateMesh() {
@@ -40,32 +40,58 @@ void Chunk::GenerateMesh() {
 }
 
 void Chunk::PropagateLighting() {
-
-  for (int x = 0; x < CHUNK_WIDTH; x++) {
-    for (int y = 0; y < CHUNK_HEIGHT; y++) {
-      for (int z = 0; z < CHUNK_WIDTH; z++) {
-        char light = GetLightAt(x, y, z);
-        if (light > 0) {
-          LightSpreadingDFS(x, y, z, light);
-        }
-      }
-    }
-  }
   {
     std::lock_guard<std::mutex> lock(m_stateMutex);
     m_propagatedLighting = true;
   }
+  return;
+
+  for (int x = 0; x < CHUNK_WIDTH; x++) {
+    for (int y = 0; y < CHUNK_HEIGHT; y++) {
+      for (int z = 0; z < CHUNK_WIDTH; z++) {
+        char skyLight = GetLightAt(LightType::SKY, x, y, z);
+        if (skyLight > 0) LightSpreadingDFS(LightType::SKY, x, y, z, skyLight);
+
+        char blockLight = GetLightAt(LightType::BLOCK, x, y, z);
+        if (blockLight > 0) LightSpreadingDFS(LightType::BLOCK, x, y, z, blockLight);
+      }
+    }
+  }
+
 }
 
-void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, char newLight, bool solidBlock) {
-  char oldLight = GetLightAt(XYZ(localPosition));
-  SetLightAt(XYZ(localPosition), newLight);
+void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlockstate, Blockstate newBlockstate) {
+  char oldSkyLight = GetLightAt(LightType::SKY, XYZ(localPosition));
+  char oldBlockLight = GetLightAt(LightType::BLOCK, XYZ(localPosition));
 
-  if (solidBlock) {
+  const Block& oldBlock = Block::FromBlockstate(oldBlockstate);
+  const Block& newBlock = Block::FromBlockstate(newBlockstate);
+
+  // Handle Sky light
+  SetLightAt(LightType::SKY, XYZ(localPosition), 0);
+  if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
     // Light removal dfs
-    LightRemovingDFS(XYZ(localPosition), newLight, oldLight);
-  } else {
-    LightUpdatingDFS(XYZ(localPosition));
+    RemoveLight(LightType::SKY, XYZ(localPosition), 0, oldSkyLight);
+  } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
+    LightUpdatingDFS(LightType::SKY, XYZ(localPosition));
+  }
+
+  // Handle block light
+  char newBlockLightSource = newBlock.GetLightLevel();
+  char oldBlockLightSource = oldBlock.GetLightLevel();
+
+  if (newBlockLightSource > oldBlockLight) {
+    // Placed a source larger than the current block light: spread
+    LightSpreadingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, /*markDirty=*/true);
+  } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
+    // Unblocked a path light could go through: update
+    LightUpdatingDFS(LightType::BLOCK, XYZ(localPosition));
+  } else if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
+    // Blocked a path light could have been using: remove
+    RemoveLight(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
+  } else if (newBlockLightSource < oldBlockLight && oldBlockLight == oldBlockLightSource) {
+    // Replaced a source with a dimmer source, or removed completely: remove
+    RemoveLight(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
   }
 }
 
@@ -74,14 +100,14 @@ void Chunk::FillSkyLight() {
     for (int z = 0; z < CHUNK_WIDTH; z++) {
       for (int y = CHUNK_HEIGHT - 1; y >= 0; y--) {
         if (Block::FromBlockstate(m_blockstates[PosToIndex(x, y, z)]).IsSolid()) break;
-        m_lights[PosToIndex(x, y, z)] = 15;
+        m_lights[PosToIndex(x, y, z)].SetLight(LightType::SKY, 15);
       }
     }
   }
 }
 
 // This DFS will spread light values to adjacent blocks
-void Chunk::LightSpreadingDFS(int x, int y, int z, char value) {
+void Chunk::LightSpreadingDFS(LightType type, int x, int y, int z, char value, bool markDirty) {
   if (value <= 0) return;
 
   // Delegate to other chunk
@@ -89,36 +115,47 @@ void Chunk::LightSpreadingDFS(int x, int y, int z, char value) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
     if (neighbor) {
       glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
-      neighbor->LightSpreadingDFS(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
+      neighbor->LightSpreadingDFS(type, neighborCoords.x, neighborCoords.y, neighborCoords.z, value, markDirty);
     }
     return;
   }
 
-  SetLightAt(x, y, z, value);
+  SetLightAt(type, x, y, z, value);
+  if (markDirty) MarkPositionAndAllNeighborsDirty({ x, y, z });
 
   static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
   for (const glm::ivec3& offset : spreadDirections) {
     int newX = x + offset.x;
     int newY = y + offset.y;
     int newZ = z + offset.z;
-    if (newY < 0 || newY >= CHUNK_HEIGHT || GetLightAt(newX, newY, newZ) >= value - 1 || Block::FromBlockstate(GetBlockstateAt(newX, newY, newZ)).IsSolid()) continue;
+    if (newY < 0 || newY >= CHUNK_HEIGHT || GetLightAt(type, newX, newY, newZ) >= value - 1 || Block::FromBlockstate(GetBlockstateAt(newX, newY, newZ)).IsSolid()) continue;
 
-    LightSpreadingDFS(newX, newY, newZ, value - 1);
+    LightSpreadingDFS(type, newX, newY, newZ, value - 1, markDirty);
   }
 }
 
 // This DFS will spread light values to adjacent blocks and also spread values FROM adjacent blocks into the current block
-void Chunk::LightUpdatingDFS(int x, int y, int z) {
+void Chunk::LightUpdatingDFS(LightType type, int x, int y, int z) {
+
+  // Delegate to other chunk
+  if (!IsInsideChunk(x, y, z)) {
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
+    if (neighbor) {
+      glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
+      neighbor->LightUpdatingDFS(type, XYZ(neighborCoords));
+    }
+    return;
+  }
 
   if (Block::FromBlockstate(GetBlockstateAt(x, y, z)).IsSolid() || y < 0 || y >= CHUNK_HEIGHT) {
     return;
   }
 
-  char startingLight = GetLightAt(x, y, z);
+  char startingLight = GetLightAt(type, x, y, z);
   char maxLight = startingLight;
   static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
 
-  if (GetLightAt(x, y + 1, z) == 15) {
+  if (GetLightAt(type, x, y + 1, z) == 15) {
     maxLight = 15; // sky light spreads directly downward
   } else {
 
@@ -127,7 +164,7 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
       int newY = y + offset.y;
       int newZ = z + offset.z;
 
-      char currLight = GetLightAt(newX, newY, newZ);
+      char currLight = GetLightAt(type, newX, newY, newZ);
 
       if (currLight - 1 > maxLight) {
         maxLight = currLight - 1;
@@ -138,62 +175,122 @@ void Chunk::LightUpdatingDFS(int x, int y, int z) {
 
   // spread the light change
   if (maxLight != startingLight) {
-    SetLightAt(x, y, z, maxLight);
+    SetLightAt(type, x, y, z, maxLight);
     MarkPositionAndAllNeighborsDirty({ x, y, z });
     for (const glm::ivec3& offset : spreadDirections) {
       int newX = x + offset.x;
       int newY = y + offset.y;
       int newZ = z + offset.z;
 
-      char currLight = GetLightAt(newX, newY, newZ);
+      char currLight = GetLightAt(type, newX, newY, newZ);
       if (currLight < maxLight - 1 || (maxLight == 15 && offset.y < 0 && currLight < 15)) {
-        LightUpdatingDFS(newX, newY, newZ);
+        LightUpdatingDFS(type, newX, newY, newZ);
       }
     }
   }
 
 }
 
-void Chunk::LightRemovingDFS(int x, int y, int z, char value, char startingValue) {
-  if (startingValue <= 0) return;
+void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpread) {
+  if (oldValue <= 0) return;
 
-  SetLightAt(x, y, z, value);
+  // Delegate to proper chunk if necessary
+  if (!IsInsideChunk(x, y, z)) {
+    std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
+    if (neighbor) {
+      glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
+      neighbor->LightRemovingDFS(type, XYZ(neighborCoords), value, oldValue, positionsToSpread);
+    }
+    return;
+  }
+
+  SetLightAt(type, x, y, z, value);
   MarkPositionAndAllNeighborsDirty({ x, y, z });
+
+  if (type == LightType::BLOCK && GetBlockAt(x, y, z).GetLightLevel() > value) {
+    positionsToSpread[{x, y, z}] = GetBlockAt(x, y, z).GetLightLevel();
+  }
 
   static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
 
   for (const glm::ivec3& offset : spreadDirections) {
-    glm::ivec3 pos = glm::ivec3 { x, y, z } + offset;
+    int nX = x + offset.x;
+    int nY = y + offset.x;
+    int nZ = z + offset.x;
 
-    if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
+    char neighborLight = GetLightAt(type, nX, nY, nZ);
 
+    bool skyLightOverride = type == LightType::SKY && offset.y < 0 && neighborLight == 15;
 
-    // Go towards light decreases to block them, unless it's a light source
-    char currLight = GetLightAt(XYZ(pos));
-    char newValue = std::max(0, value - 1);
-
-    // TODO: Set the new value to the most of its neighbors -1
-    for (const glm::ivec3& offset2 : spreadDirections) {
-      glm::ivec3 neighborPos = pos + offset2;
-      if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
-
-      char lightAtBlock = GetLightAt(XYZ(neighborPos));
-      // Special check because skylight doesn't travel upwards
-      if (lightAtBlock - 1 > newValue && (offset2.y >= 0 || lightAtBlock != 15)) {
-        newValue = lightAtBlock - 1;
-      }
+    if (neighborLight >= oldValue && !skyLightOverride) {
+      positionsToSpread[{nX, nY, nZ}] = neighborLight;
     }
 
-    if (currLight < startingValue && currLight > newValue) {
-      LightRemovingDFS(XYZ(pos), newValue, startingValue - 1);
+    if (GetBlockAt(nX, nY, nZ).IsSolid()) return;
+
+    char newNeighborValue = std::max(0, value - 1);
+    if (neighborLight == oldValue - 1) {
+      LightRemovingDFS(type, nX, nY, nZ, newNeighborValue, neighborLight, positionsToSpread);
+    } else if (skyLightOverride) {
+      LightRemovingDFS(type, nX, nY, nZ, newNeighborValue, oldValue, positionsToSpread);
     }
-    // Sky light going down
-    if (startingValue == 15 && currLight == 15 && offset.y < 0) {
-      LightRemovingDFS(XYZ(pos), newValue, startingValue);
-    }
+
   }
 
 }
+
+// TODO: This doesn't work
+// void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, char startingValue) {
+//   if (startingValue <= 0) return;
+
+//   // Delegate to other chunk
+//   if (!IsInsideChunk(x, y, z)) {
+//     std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
+//     if (neighbor) {
+//       glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
+//       neighbor->LightRemovingDFS(type, XYZ(neighborCoords), value, startingValue);
+//     }
+//     return;
+//   }
+
+//   // Don't remove light if it's a block light source
+//   if (type == LightType::BLOCK && GetLightAt(type, x, y, z) == Block::FromBlockstate(GetBlockstateAt(x, y, z)).GetLightLevel()) return;
+
+//   SetLightAt(type, x, y, z, value);
+//   MarkPositionAndAllNeighborsDirty({ x, y, z });
+
+//   static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+
+//   for (const glm::ivec3& offset : spreadDirections) {
+//     glm::ivec3 pos = glm::ivec3 { x, y, z } + offset;
+
+//     if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
+
+//     // Go towards light decreases to block them
+//     char currLight = GetLightAt(type, XYZ(pos));
+//     char newValue = std::max(0, value - 1);
+
+//     for (const glm::ivec3& offset2 : spreadDirections) {
+//       glm::ivec3 neighborPos = pos + offset2;
+//       if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
+
+//       char lightAtBlock = GetLightAt(type, XYZ(neighborPos));
+//       // Special check because skylight doesn't travel upwards
+//       if (type == LightType::SKY && lightAtBlock - 1 > newValue && (offset2.y >= 0 || lightAtBlock != 15)) {
+//         newValue = lightAtBlock - 1;
+//       }
+//     }
+
+//     if (currLight < startingValue && currLight > newValue) {
+//       LightRemovingDFS(type, XYZ(pos), newValue, startingValue - 1);
+//     }
+//     // Sky light going down
+//     if (type == LightType::SKY && startingValue == 15 && currLight == 15 && offset.y < 0) {
+//       LightRemovingDFS(type, XYZ(pos), newValue, startingValue);
+//     }
+//   }
+
+// }
 
 int Chunk::GetNeighborIndex(int localX, int localZ) const {
   if (localX < 0 && localZ < 0) {
@@ -372,6 +469,15 @@ void Chunk::GenerateMeshForSubchunk(int i) {
 
 }
 
+void Chunk::RemoveLight(LightType type, int x, int y, int z, char newValue, char oldValue) {
+  PositionsToSpreadLightMap positionsToSpread;
+  LightRemovingDFS(type, x, y, z, newValue, oldValue, positionsToSpread);
+
+  for (const auto& [position, value] : positionsToSpread) {
+    LightSpreadingDFS(type, XYZ(position), value);
+  }
+}
+
 void Chunk::MarkPositionDirty(glm::ivec3 localPosition) {
   if (IsInOtherChunk(localPosition.x, localPosition.y, localPosition.z)) {
     m_world.MarkPositionDirty(ToGlobalCoords(localPosition));
@@ -444,41 +550,45 @@ Blockstate Chunk::GetBlockstateAt(int localX, int localY, int localZ) {
   return Blocks::VOID_AIR;
 }
 
-char Chunk::GetLightAt(int localX, int localY, int localZ) {
+const Block& Chunk::GetBlockAt(int localX, int localY, int localZ) {
+  return Block::FromBlockstate(GetBlockstateAt(localX, localY, localZ));
+}
+
+char Chunk::GetLightAt(LightType type, int localX, int localY, int localZ) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    return m_lights[PosToIndex(localX, localY, localZ)];
+    return m_lights[PosToIndex(localX, localY, localZ)].GetLight(type);
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return 0;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
-    return neighbor->GetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z);
+    return neighbor->GetLightAt(type, neighborCoords.x, neighborCoords.y, neighborCoords.z);
   }
   return 0;
 }
 
-float Chunk::GetFixedLightAt(int localX, int localY, int localZ) {
+float Chunk::GetFixedLightAt(LightType type, int localX, int localY, int localZ) {
   if (localY < 0 || localY >= CHUNK_HEIGHT) return 0;
   const Block& block = Block::FromBlockstate(GetBlockstateAt(localX, localY, localZ));
   char lightLevel;
   if (block.IsSolid()) {
     lightLevel = -1;
   } else {
-    lightLevel = GetLightAt(localX, localY, localZ);
+    lightLevel = GetLightAt(type, localX, localY, localZ);
   }
   float light = lightLevel / 15.0f;
   return light;
 }
 
-void Chunk::SetLightAt(int localX, int localY, int localZ, char value) {
+void Chunk::SetLightAt(LightType type, int localX, int localY, int localZ, char value) {
   if (IsInsideChunk(localX, localY, localZ)) {
-    m_lights[PosToIndex(localX, localY, localZ)] = value;
+    m_lights[PosToIndex(localX, localY, localZ)].SetLight(type, value);
   } else if (localY >= 0 && localY < CHUNK_HEIGHT) {
     std::shared_ptr<Chunk> neighbor = GetNeighbor(localX, localZ);
     if (neighbor == nullptr) return;
 
     glm::ivec3 neighborCoords = ToNeighborCoords(localX, localY, localZ);
-    neighbor->SetLightAt(neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
+    neighbor->SetLightAt(type, neighborCoords.x, neighborCoords.y, neighborCoords.z, value);
   }
 }
 
@@ -572,4 +682,20 @@ glm::ivec3 Chunk::ToNeighborCoords(int localX, int localY, int localZ) const {
     localY,
     MathUtil::Mod(localZ, Chunk::CHUNK_WIDTH)
   };
+}
+
+char SkyBlockLight::GetLight(LightType type) {
+  if (type == LightType::SKY) {
+    return m_value1;
+  } else {
+    return m_value2;
+  }
+}
+
+void SkyBlockLight::SetLight(LightType type, char value) {
+  if (type == LightType::SKY) {
+    m_value1 = value;
+  } else {
+    m_value2 = value;
+  }
 }

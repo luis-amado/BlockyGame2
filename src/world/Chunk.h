@@ -10,6 +10,7 @@
 #include "rendering/Shader.h"
 #include <shared_mutex>
 #include "../init/Blocks.h"
+#include "util/GlmExtensions.h"
 
 class World;
 
@@ -17,6 +18,24 @@ struct MeshData {
   std::vector<float> vertices;
   std::vector<unsigned int> indices;
 };
+
+// TODO: Abstract lighting to a separate file
+
+enum class LightType {
+  SKY, BLOCK
+};
+
+struct SkyBlockLight {
+  // char is 8 bits, a light value is only 4 bits
+  // first 4 bits are sky, last 4 bits are block
+  char m_value1;
+  char m_value2;
+
+  char GetLight(LightType type);
+  void SetLight(LightType type, char value);
+};
+
+using PositionsToSpreadLightMap = std::unordered_map<glm::ivec3, char, IVec3Hash, IVec3Equal>;
 
 class Chunk : public std::enable_shared_from_this<Chunk> {
 public:
@@ -27,7 +46,7 @@ public:
   void GenerateTerrain();
   void GenerateMesh();
   void PropagateLighting();
-  void PropagateLightingAtPos(glm::ivec3 localPosition, char newLight, bool blockPlaced);
+  void PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlockstate, Blockstate newBlockstate);
   void FillSkyLight();
   void ApplyMesh();
 
@@ -42,9 +61,10 @@ public:
 
   void Draw(Shader& shader) const;
   Blockstate GetBlockstateAt(int localX, int localY, int localZ);
-  char GetLightAt(int localX, int localY, int localZ);
-  float GetFixedLightAt(int localX, int localY, int localZ);
-  void SetLightAt(int localX, int localY, int localZ, char value);
+  const Block& GetBlockAt(int localX, int localY, int localZ);
+  char GetLightAt(LightType type, int localX, int localY, int localZ);
+  float GetFixedLightAt(LightType type, int localX, int localY, int localZ);
+  void SetLightAt(LightType type, int localX, int localY, int localZ, char value);
   void SetBlockstateAt(int localX, int localY, int localZ, Blockstate value);
 
   void SetActive(bool value);
@@ -76,7 +96,7 @@ private:
   glm::ivec2 m_chunkCoord;
 
   std::vector<Blockstate> m_blockstates;
-  std::vector<char> m_lights;
+  std::vector<SkyBlockLight> m_lights;
 
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;
@@ -93,9 +113,12 @@ private:
   bool m_active = false;
 
   void GenerateMeshForSubchunk(int i);
-  void LightSpreadingDFS(int x, int y, int z, char value);
-  void LightUpdatingDFS(int x, int y, int z);
-  void LightRemovingDFS(int x, int y, int z, char value, char startingValue);
+
+  void RemoveLight(LightType type, int x, int y, int z, char newValue, char oldValue);
+
+  void LightSpreadingDFS(LightType type, int x, int y, int z, char value, bool markDirty = false);
+  void LightUpdatingDFS(LightType type, int x, int y, int z);
+  void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpread);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;

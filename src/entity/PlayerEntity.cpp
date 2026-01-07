@@ -83,7 +83,7 @@ std::optional<std::pair<glm::ivec3, glm::ivec3>> RaycastToBlockHit2(const World&
 
   for (double distance = 0.0; distance <= range; distance += step) {
     glm::ivec3 pos = glm::floor(origin + direction * distance);
-    if (!Block::FromBlockstate(world.GetBlockstateAt(pos)).IsAir()) {
+    if (!Block::FromBlockstate(world.GetBlockstateAt(XYZ(pos))).IsAir()) {
       return std::pair<glm::ivec3, glm::ivec3> { pos, prevPos };
     }
     prevPos = pos;
