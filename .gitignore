@@ -3,3 +3,4 @@ build/
 .prettierignore
 imgui.ini
 *.DS_Store
+.cache
