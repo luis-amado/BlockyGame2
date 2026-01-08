@@ -253,7 +253,7 @@ void PlayerEntity::Update(World& world) {
     world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
   }
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
-    char blockToPlace = Blocks::GLOWSTONE.GetBlockstate();
+    char blockToPlace = Blocks::STONE.GetBlockstate();
     if (m_ghost) {
       world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, blockToPlace);
     } else {

@@ -367,6 +367,7 @@ void Chunk::GenerateTerrain() {
         }
 
         m_blockstates[PosToIndex(x, y, z)] = blockstate;
+        m_lights[PosToIndex(x, y, z)].SetLight(LightType::BLOCK, Block::FromBlockstate(blockstate).GetLightLevel());
       }
     }
   }
