@@ -28,8 +28,7 @@ enum class LightType {
 struct SkyBlockLight {
   // char is 8 bits, a light value is only 4 bits
   // first 4 bits are sky, last 4 bits are block
-  char m_value1;
-  char m_value2;
+  unsigned char m_value;
 
   char GetLight(LightType type);
   void SetLight(LightType type, char value);
@@ -119,6 +118,7 @@ private:
   void LightSpreadingDFS(LightType type, int x, int y, int z, char value, bool markDirty = false);
   void LightUpdatingDFS(LightType type, int x, int y, int z);
   void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpread);
+  bool IsLitBySourceBlock(int x, int y, int z, char prevValue);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;

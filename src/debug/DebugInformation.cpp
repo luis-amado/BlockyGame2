@@ -103,12 +103,13 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     }
     ImGui::Text("");
 
-    glm::ivec2 chunkCoord = world.GetChunkCoord(floor(playerPos.x), floor(playerPos.z));
-    glm::ivec3 localCoords = world.ToLocalCoords(floor(playerPos.x), playerPos.y, floor(playerPos.z));
+    glm::ivec3 playerBlockPos = { floor(playerPos.x), floor(playerPos.y), floor(playerPos.z) };
+    glm::ivec2 chunkCoord = world.GetChunkCoord(playerBlockPos.x, playerBlockPos.z);
+    glm::ivec3 localCoords = world.ToLocalCoords(XYZ(playerBlockPos));
 
     ImGui::Text("Chunk: %d, %d", chunkCoord.x, chunkCoord.y);
     ImGui::Text("Local XYZ: %d / %d / %d", localCoords.x, localCoords.y, localCoords.z);
-    ImGui::Text("Light level (S/B): %d / %d", world.GetLightAt(LightType::SKY, XYZ(playerPos)), world.GetLightAt(LightType::BLOCK, XYZ(playerPos)));
+    ImGui::Text("Light level (S/B): %d / %d", world.GetLightAt(LightType::SKY, XYZ(playerBlockPos)), world.GetLightAt(LightType::BLOCK, XYZ(playerBlockPos)));
 
     ImGui::Text("");
 

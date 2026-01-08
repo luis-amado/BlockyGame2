@@ -2,6 +2,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_set>
+#include <cassert>
 
 #include "util/Logging.h"
 #include "util/Noise.h"
@@ -21,7 +22,7 @@ const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
 Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, { 0, 0 }), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, { 0 }), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 
 void Chunk::GenerateMesh() {
@@ -40,12 +41,6 @@ void Chunk::GenerateMesh() {
 }
 
 void Chunk::PropagateLighting() {
-  {
-    std::lock_guard<std::mutex> lock(m_stateMutex);
-    m_propagatedLighting = true;
-  }
-  return;
-
   for (int x = 0; x < CHUNK_WIDTH; x++) {
     for (int y = 0; y < CHUNK_HEIGHT; y++) {
       for (int z = 0; z < CHUNK_WIDTH; z++) {
@@ -58,6 +53,10 @@ void Chunk::PropagateLighting() {
     }
   }
 
+  {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    m_propagatedLighting = true;
+  }
 }
 
 void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlockstate, Blockstate newBlockstate) {
@@ -80,19 +79,22 @@ void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlock
   char newBlockLightSource = newBlock.GetLightLevel();
   char oldBlockLightSource = oldBlock.GetLightLevel();
 
-  if (newBlockLightSource > oldBlockLight) {
-    // Placed a source larger than the current block light: spread
-    LightSpreadingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, /*markDirty=*/true);
-  } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
-    // Unblocked a path light could go through: update
-    LightUpdatingDFS(LightType::BLOCK, XYZ(localPosition));
-  } else if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
+  if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
     // Blocked a path light could have been using: remove
     RemoveLight(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
   } else if (newBlockLightSource < oldBlockLight && oldBlockLight == oldBlockLightSource) {
     // Replaced a source with a dimmer source, or removed completely: remove
     RemoveLight(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
   }
+
+  if (newBlockLightSource > oldBlockLight) {
+    // Placed a source larger than the current block light: spread
+    LightSpreadingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, /*markDirty=*/true);
+  } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
+    // Unblocked a path light could go through: update
+    LightUpdatingDFS(LightType::BLOCK, XYZ(localPosition));
+  }
+
 }
 
 void Chunk::FillSkyLight() {
@@ -215,18 +217,19 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
 
   for (const glm::ivec3& offset : spreadDirections) {
     int nX = x + offset.x;
-    int nY = y + offset.x;
-    int nZ = z + offset.x;
+    int nY = y + offset.y;
+    int nZ = z + offset.z;
 
     char neighborLight = GetLightAt(type, nX, nY, nZ);
 
     bool skyLightOverride = type == LightType::SKY && offset.y < 0 && neighborLight == 15;
 
-    if (neighborLight >= oldValue && !skyLightOverride) {
-      positionsToSpread[{nX, nY, nZ}] = neighborLight;
+    if (neighborLight >= oldValue && type == LightType::BLOCK) {
+      if (IsLitBySourceBlock(nX, nY, nZ, neighborLight))
+        positionsToSpread[{nX, nY, nZ}] = neighborLight;
     }
 
-    if (GetBlockAt(nX, nY, nZ).IsSolid()) return;
+    if (GetBlockAt(nX, nY, nZ).IsSolid()) continue;
 
     char newNeighborValue = std::max(0, value - 1);
     if (neighborLight == oldValue - 1) {
@@ -237,6 +240,28 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
 
   }
 
+}
+
+bool Chunk::IsLitBySourceBlock(int x, int y, int z, char prevValue) {
+  char lightLevel = GetLightAt(LightType::BLOCK, x, y, z);
+  if (lightLevel == 0) return false;
+  if (GetBlockAt(x, y, z).GetLightLevel() == prevValue) return true;
+
+  static glm::ivec3 spreadDirections[] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+
+  for (const glm::ivec3& offset : spreadDirections) {
+    int nX = x + offset.x;
+    int nY = y + offset.y;
+    int nZ = z + offset.z;
+
+    char neighborLight = GetLightAt(LightType::BLOCK, nX, nY, nZ);
+
+    if (neighborLight == lightLevel + 1 && IsLitBySourceBlock(nX, nY, nZ, neighborLight)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // TODO: This doesn't work
@@ -686,16 +711,20 @@ glm::ivec3 Chunk::ToNeighborCoords(int localX, int localY, int localZ) const {
 
 char SkyBlockLight::GetLight(LightType type) {
   if (type == LightType::SKY) {
-    return m_value1;
+    return m_value & (unsigned char)0b00001111;
   } else {
-    return m_value2;
+    return m_value >> 4;
   }
 }
 
 void SkyBlockLight::SetLight(LightType type, char value) {
+  assert(value >= 0 && value <= 15);
+
   if (type == LightType::SKY) {
-    m_value1 = value;
+    m_value &= (unsigned char)0b11110000;
+    m_value |= value;
   } else {
-    m_value2 = value;
+    m_value &= (unsigned char)0b00001111;
+    m_value |= ((unsigned char)value) << 4;
   }
 }
