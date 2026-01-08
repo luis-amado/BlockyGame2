@@ -113,12 +113,9 @@ private:
 
   void GenerateMeshForSubchunk(int i);
 
-  void RemoveLight(LightType type, int x, int y, int z, char newValue, char oldValue);
-
   void LightSpreadingDFS(LightType type, int x, int y, int z, char value, bool markDirty = false);
   void LightUpdatingDFS(LightType type, int x, int y, int z);
-  void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpread);
-  bool IsLitBySourceBlock(int x, int y, int z, char prevValue);
+  void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
