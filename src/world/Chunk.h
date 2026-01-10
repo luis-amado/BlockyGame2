@@ -115,7 +115,7 @@ private:
 
   void LightSpreadingDFS(LightType type, int x, int y, int z, char value, bool markDirty = false);
   void LightUpdatingDFS(LightType type, int x, int y, int z);
-  void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue);
+  void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpreadAfter);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
 
   inline int PosToIndex(int localX, int localY, int localZ) const;

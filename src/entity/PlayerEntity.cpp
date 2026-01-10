@@ -94,7 +94,17 @@ std::optional<std::pair<glm::ivec3, glm::ivec3>> RaycastToBlockHit2(const World&
 
 }  // namespace
 
-PlayerEntity::PlayerEntity() {}
+PlayerEntity::PlayerEntity() {
+  Input::SubscribeKeyCallback('1', [&](int action, int mods) {
+    m_selectedBlock = Blocks::STONE;
+  });
+  Input::SubscribeKeyCallback('2', [&](int action, int mods) {
+    m_selectedBlock = Blocks::GLOWSTONE;
+  });
+  Input::SubscribeKeyCallback('3', [&](int action, int mods) {
+    m_selectedBlock = Blocks::SHROOMLIGHT;
+  });
+}
 
 glm::mat4 PlayerEntity::GetFirstPersonViewMatrix() {
   glm::mat4 view(1.0f);
@@ -253,16 +263,15 @@ void PlayerEntity::Update(World& world) {
     world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
   }
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
-    char blockToPlace = Blocks::STONE.GetBlockstate();
     if (m_ghost) {
-      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, blockToPlace);
+      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, m_selectedBlock);
     } else {
       BoundingBox bb = GetBoundingBox();
       AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
       AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
 
       if (!playerAABB.IsColliding(blockAABB)) {
-        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, blockToPlace);
+        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, m_selectedBlock);
       }
     }
   }

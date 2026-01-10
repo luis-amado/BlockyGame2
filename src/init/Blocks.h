@@ -20,6 +20,7 @@ public:
   static const Block& OAK_LOG;
   static const Block& OAK_LEAVES;
   static const Block& GLOWSTONE;
+  static const Block& SHROOMLIGHT;
 
   static void InitializeBlocks();
   static void GenerateBlockAtlas();

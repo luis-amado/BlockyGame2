@@ -66,11 +66,13 @@ void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlock
   const Block& oldBlock = Block::FromBlockstate(oldBlockstate);
   const Block& newBlock = Block::FromBlockstate(newBlockstate);
 
+  PositionsToSpreadLightMap positionsToSpread;
+
   // Handle Sky light
   SetLightAt(LightType::SKY, XYZ(localPosition), 0);
   if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
     // Light removal dfs
-    LightRemovingDFS(LightType::SKY, XYZ(localPosition), 0, oldSkyLight);
+    LightRemovingDFS(LightType::SKY, XYZ(localPosition), 0, oldSkyLight, positionsToSpread);
   } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
     LightUpdatingDFS(LightType::SKY, XYZ(localPosition));
   }
@@ -81,10 +83,14 @@ void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlock
 
   if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
     // Blocked a path light could have been using: remove
-    LightRemovingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
+    LightRemovingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight, positionsToSpread);
   } else if (newBlockLightSource < oldBlockLight && oldBlockLight == oldBlockLightSource) {
     // Replaced a source with a dimmer source, or removed completely: remove
-    LightRemovingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight);
+    LightRemovingDFS(LightType::BLOCK, XYZ(localPosition), newBlockLightSource, oldBlockLight, positionsToSpread);
+  }
+
+  for (auto& [pos, value] : positionsToSpread) {
+    LightSpreadingDFS(LightType::BLOCK, XYZ(pos), value, /*markDirty=*/true);
   }
 
   if (newBlockLightSource > oldBlockLight) {
@@ -194,7 +200,7 @@ void Chunk::LightUpdatingDFS(LightType type, int x, int y, int z) {
 
 }
 
-void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, char startingValue) {
+void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, char startingValue, PositionsToSpreadLightMap& positionsToSpreadAfter) {
   if (startingValue <= 0) return;
 
   // Delegate to other chunk
@@ -202,7 +208,7 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
     std::shared_ptr<Chunk> neighbor = GetNeighbor(x, z);
     if (neighbor) {
       glm::ivec3 neighborCoords = ToNeighborCoords(x, y, z);
-      neighbor->LightRemovingDFS(type, XYZ(neighborCoords), value, startingValue);
+      neighbor->LightRemovingDFS(type, XYZ(neighborCoords), value, startingValue, positionsToSpreadAfter);
     }
     return;
   }
@@ -215,14 +221,21 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
   for (const glm::ivec3& offset : spreadDirections) {
     glm::ivec3 pos = glm::ivec3 { x, y, z } + offset;
 
-    if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
-
     // Go towards light decreases to block them
     char currLight = GetLightAt(type, XYZ(pos));
     char newValue = std::max(0, value - 1);
 
-    // Don't keep going if the block is a light source
-    if (currLight == GetBlockAt(XYZ(pos)).GetLightLevel()) continue;
+    // Don't keep going if the block is a light source, spread that light source after
+    if (type == LightType::BLOCK) {
+      char blockLightLevel = GetBlockAt(XYZ(pos)).GetLightLevel();
+      if (newValue <= blockLightLevel && blockLightLevel > 0) {
+        positionsToSpreadAfter[pos] = blockLightLevel;
+        continue;
+      }
+    }
+
+    // Only remove light from non-solid blocks (needs to happen after, because a solid block could still be a light source that needs to be spread afterward)
+    if (Block::FromBlockstate(GetBlockstateAt(XYZ(pos))).IsSolid()) continue;
 
     for (const glm::ivec3& offset2 : spreadDirections) {
       glm::ivec3 neighborPos = pos + offset2;
@@ -237,11 +250,11 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
     }
 
     if (currLight < startingValue && currLight > newValue) {
-      LightRemovingDFS(type, XYZ(pos), newValue, startingValue - 1);
+      LightRemovingDFS(type, XYZ(pos), newValue, startingValue - 1, positionsToSpreadAfter);
     }
     // Sky light going down
     if (type == LightType::SKY && startingValue == 15 && currLight == 15 && offset.y < 0) {
-      LightRemovingDFS(type, XYZ(pos), newValue, startingValue);
+      LightRemovingDFS(type, XYZ(pos), newValue, startingValue, positionsToSpreadAfter);
     }
   }
 

@@ -41,6 +41,8 @@ private:
   std::optional<glm::ivec3> m_lookingAtBlock;
   std::optional<glm::ivec3> m_placingAtBlock;
 
+  Blockstate m_selectedBlock = Blocks::STONE;
+
   // Used for smoothing face movements
   glm::dvec2 m_rotationVelocity;
 
