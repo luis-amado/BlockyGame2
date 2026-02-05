@@ -41,7 +41,7 @@ public:
       s_mutex.lock();
       std::cout << getSeverityLabel(severity) << ' ';
 
-      if (s_showLogFile) {
+      if (s_showLogFile || severity == FATAL) {
         std::cout << TERM_GRAY << "(" << file << ':' << line << ") " << TERM_RESET;
       }
     }

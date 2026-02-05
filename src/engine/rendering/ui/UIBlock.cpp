@@ -11,6 +11,7 @@ void UIBlock::Draw() const {
   }
 }
 
+// A simple UIBlock doesn't render anything, but can act as a container
 void UIBlock::DrawMyself() const {}
 
 // This function assumes it gets called from the parent element

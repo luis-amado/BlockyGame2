@@ -204,10 +204,10 @@ void PlayerEntity::Update(World& world) {
   }
 
   if (Input::IsPressed(GLFW_KEY_UP)) {
-    m_speedMultiplier += (1.0 / 3.0 * 0.1);
+    m_speedMultiplier += 2 * Time::deltaTime;
   }
   if (Input::IsPressed(GLFW_KEY_DOWN)) {
-    m_speedMultiplier -= (1.0 / 3.0 * 0.1);
+    m_speedMultiplier -= 2 * Time::deltaTime;
   }
   m_speedMultiplier = MathUtil::Clamp(m_speedMultiplier, 0.1, 300.0);
   double speed = m_walkSpeed * m_speedMultiplier;

@@ -3,6 +3,7 @@
 #include <stb/stb_image.h>
 #include "util/MathUtil.h"
 #include "util/Logging.h"
+#include "util/FileUtil.h"
 
 TextureAtlasBuilder::TextureAtlasBuilder() {
   AddImageFile("error");
@@ -10,7 +11,7 @@ TextureAtlasBuilder::TextureAtlasBuilder() {
 
 void TextureAtlasBuilder::AddImageFile(const std::string& fileName, const std::string& extension) {
   int width, height, channels;
-  std::string filePath = "res/textures/" + fileName + extension;
+  std::string filePath = std::string(RESOURCES_PATH) + "textures/" + fileName + extension;
   stbi_set_flip_vertically_on_load(true);
   unsigned char* bytes = stbi_load(filePath.c_str(), &width, &height, &channels, 4);
 

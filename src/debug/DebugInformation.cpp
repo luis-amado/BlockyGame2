@@ -12,12 +12,14 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <mach/mach.h>
+#include <string>
 
 #include "util/Noise.h"
 #include "rendering/textures/Texture.h"
 #include <optional>
 #include "util/Logging.h"
 #include "util/MathUtil.h"
+#include "util/FileUtil.h"
 
 #include "../block/Block.h"
 #include "../init/Blocks.h"
@@ -69,6 +71,45 @@ std::optional<Texture> noiseTexture = std::nullopt;
 //   return value ? "Yes" : "No";
 // }
 
+void DrawChunkBoundaries(const glm::dvec3& playerPosition) {
+  glm::ivec2 chunkCoord = World::GetChunkCoord(std::floor(playerPosition.x), std::floor(playerPosition.z));
+
+  // Draw a line straight up from each block corner
+  // Lines at the edges will be red.
+
+  int x0 = chunkCoord.x * Chunk::CHUNK_WIDTH;
+  int z0 = chunkCoord.y * Chunk::CHUNK_WIDTH;
+  int x1 = x0 + Chunk::CHUNK_WIDTH;
+  int z1 = z0 + Chunk::CHUNK_WIDTH;
+
+  DebugShapes::DrawLine({ x0, 0, z0 }, { x0, Chunk::CHUNK_HEIGHT, z0 }, { 1.0f, 0.0f, 0.0f });
+  DebugShapes::DrawLine({ x1, 0, z0 }, { x1, Chunk::CHUNK_HEIGHT, z0 }, { 1.0f, 0.0f, 0.0f });
+  DebugShapes::DrawLine({ x0, 0, z1 }, { x0, Chunk::CHUNK_HEIGHT, z1 }, { 1.0f, 0.0f, 0.0f });
+  DebugShapes::DrawLine({ x1, 0, z1 }, { x1, Chunk::CHUNK_HEIGHT, z1 }, { 1.0f, 0.0f, 0.0f });
+
+  // In between lines with white
+  for (int i = 1; i <= 15; i++) {
+    DebugShapes::DrawLine({ x0 + i, 0, z0 }, { x0 + i, Chunk::CHUNK_HEIGHT, z0 }, { 0.8f, 0.8f, 0.8f });
+    DebugShapes::DrawLine({ x0, 0, z0 + i }, { x0, Chunk::CHUNK_HEIGHT, z0 + i }, { 0.8f, 0.8f, 0.8f });
+    DebugShapes::DrawLine({ x0 + i, 0, z1 }, { x0 + i, Chunk::CHUNK_HEIGHT, z1 }, { 0.8f, 0.8f, 0.8f });
+    DebugShapes::DrawLine({ x1, 0, z0 + i }, { x1, Chunk::CHUNK_HEIGHT, z0 + i }, { 0.8f, 0.8f, 0.8f });
+  }
+
+  // Horizontal lines dividing subchunks in blue
+  for (int subchunk = 0; subchunk < Chunk::SUBCHUNK_LAYERS; subchunk++) {
+
+    //  x0z1  x1z1
+    //  x0z0  x1z0
+
+    int currY = subchunk * Chunk::SUBCHUNK_HEIGHT;
+    DebugShapes::DrawLine({ x0, currY, z0 }, { x1, currY, z0 }, { 0.0f, 0.0f, 1.0f });
+    DebugShapes::DrawLine({ x0, currY, z0 }, { x0, currY, z1 }, { 0.0f, 0.0f, 1.0f });
+    DebugShapes::DrawLine({ x1, currY, z0 }, { x1, currY, z1 }, { 0.0f, 0.0f, 1.0f });
+    DebugShapes::DrawLine({ x0, currY, z1 }, { x1, currY, z1 }, { 0.0f, 0.0f, 1.0f });
+  }
+
+}
+
 } // namespace
 
 void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
@@ -81,9 +122,16 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
   if (s_showDebugInformation) {
     glm::dvec3 playerPos = player.GetPosition();
-    glDisable(GL_DEPTH_TEST);
-    DebugShapes::DrawBoundingBox(player.GetBoundingBox(), playerPos);
-    glEnable(GL_DEPTH_TEST);
+
+    if (DebugSettings::instance.showPlayerHitbox) {
+      glDisable(GL_DEPTH_TEST);
+      DebugShapes::DrawBoundingBox(player.GetBoundingBox(), playerPos);
+      glEnable(GL_DEPTH_TEST);
+    }
+
+    if (DebugSettings::instance.showChunkBoundaries) {
+      DrawChunkBoundaries(playerPos);
+    }
 
     ImGui::PushFont(s_font);
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
@@ -197,7 +245,9 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       }
 
       ImGui::Text("");
-      ImGui::InputFloat("Chunk split", &DebugSettings::instance.chunkSplit);
+      ImGui::Text("Debug");
+      ImGui::Checkbox("Show chunk boundaries", &DebugSettings::instance.showChunkBoundaries);
+      ImGui::Checkbox("Show player hitbox", &DebugSettings::instance.showPlayerHitbox);
 
       ImGui::EndTabItem();
     }
@@ -296,7 +346,7 @@ void DebugInformation::Setup(const Window& window) {
     }
   });
 
-  s_font = window.GetImGuiIO().Fonts->AddFontFromFileTTF("res/fonts/Minecraft.ttf", 20.0f, NULL);
+  s_font = window.GetImGuiIO().Fonts->AddFontFromFileTTF((std::string(RESOURCES_PATH) + "fonts/Minecraft.ttf").c_str(), 20.0f, NULL);
 }
 
 void DebugInformation::Toggle() {

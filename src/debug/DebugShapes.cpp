@@ -47,11 +47,31 @@ const LineMesh& GetBoxMesh() {
   return mesh;
 }
 
+const LineMesh CreateLineMesh() {
+  LineMesh mesh;
+
+  float vertices[] = {
+    0.0f, 0.0f, 0.0f,
+    1.0f, 1.0f, 1.0f,
+  };
+  unsigned int indices[] = {
+    0, 1,
+  };
+
+  mesh.SetData(vertices, 6, indices, 2);
+  return mesh;
+}
+
+const LineMesh& GetLineMesh() {
+  static LineMesh mesh = CreateLineMesh();
+  return mesh;
+}
+
 }
 
 void DebugShapes::DrawBoundingBox(BoundingBox boundingBox, glm::dvec3 position) {
   const LineMesh& mesh = GetBoxMesh();
-  Shader& shader = ShaderLibrary::GetInstance().Get("line");
+  Shader& shader = ShaderLibrary::GetInstance().Get("shape");
 
   glm::mat4 model(1.0f);
   model = glm::translate(model, static_cast<glm::vec3>(position));
@@ -67,7 +87,7 @@ void DebugShapes::DrawBoundingBox(BoundingBox boundingBox, glm::dvec3 position) 
 
 void DebugShapes::DrawBlockBox(glm::ivec3 position, glm::vec3 color) {
   const LineMesh& mesh = GetBoxMesh();
-  Shader& shader = ShaderLibrary::GetInstance().Get("line");
+  Shader& shader = ShaderLibrary::GetInstance().Get("shape");
 
   glm::mat4 model(1.0f);
   model = glm::translate(model, static_cast<glm::vec3>(position));
@@ -77,6 +97,18 @@ void DebugShapes::DrawBlockBox(glm::ivec3 position, glm::vec3 color) {
 
   shader.Use();
   shader.LoadMatrix4f("model", model);
+  shader.LoadVector3f("color", color);
+
+  mesh.Draw();
+}
+
+void DebugShapes::DrawLine(glm::dvec3 start, glm::dvec3 end, glm::vec3 color) {
+  const LineMesh& mesh = GetLineMesh();
+  Shader& shader = ShaderLibrary::GetInstance().Get("line");
+
+  shader.Use();
+  shader.LoadVector3f("start", start);
+  shader.LoadVector3f("end", end);
   shader.LoadVector3f("color", color);
 
   mesh.Draw();

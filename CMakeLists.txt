@@ -12,7 +12,9 @@ file(GLOB_RECURSE ALL_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/*.c"
 )
 
+
 add_executable(main ${ALL_SOURCES})
+target_compile_definitions(main PRIVATE RESOURCES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/res/")
 
 # Includes
 include_directories(
@@ -44,5 +46,3 @@ set_target_properties(main PROPERTIES
     INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/lib"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
-
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/res" DESTINATION "${CMAKE_BINARY_DIR}")

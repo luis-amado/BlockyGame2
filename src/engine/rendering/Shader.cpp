@@ -38,8 +38,8 @@ Shader::Shader(const std::string& shaderName)
   : Shader(shaderName, shaderName) {}
 
 Shader::Shader(const std::string& vertexShaderName, const std::string& fragmentShaderName) {
-  std::string vertexSourceCode = FileUtil::ReadSource("res/shaders/" + vertexShaderName + ".vert");
-  std::string fragmentSourceCode = FileUtil::ReadSource("res/shaders/" + fragmentShaderName + ".frag");
+  std::string vertexSourceCode = FileUtil::ReadSource("shaders/" + vertexShaderName + ".vert");
+  std::string fragmentSourceCode = FileUtil::ReadSource("shaders/" + fragmentShaderName + ".frag");
 
   const char* vertexSource = vertexSourceCode.c_str();
   const char* fragmentSource = fragmentSourceCode.c_str();
@@ -58,7 +58,7 @@ Shader::Shader(const std::string& vertexShaderName, const std::string& fragmentS
   glGetProgramiv(m_shaderProgram, GL_LINK_STATUS, &success);
   if (!success) {
     glGetProgramInfoLog(m_shaderProgram, 512, NULL, infoLog);
-    LOG(ERROR) << "FAILED TO LINK SHADER:\n" << infoLog << '\n';
+    LOG(ERROR) << "FAILED TO LINK SHADER (" << vertexShaderName << ".vert/" << fragmentShaderName << ".frag):\n" << infoLog << '\n';
   }
 
   glDeleteShader(vertexShader);

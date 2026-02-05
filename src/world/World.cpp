@@ -383,14 +383,14 @@ bool World::IsInsideWorld(int globalX, int globalY, int globalZ) const {
   return m_chunks.contains(chunkCoord);
 }
 
-glm::ivec2 World::GetChunkCoord(int globalX, int globalZ) const {
+glm::ivec2 World::GetChunkCoord(int globalX, int globalZ) {
   return {
     std::floor((float)globalX / Chunk::CHUNK_WIDTH),
     std::floor((float)globalZ / Chunk::CHUNK_WIDTH)
   };
 }
 
-glm::ivec3 World::ToLocalCoords(int globalX, int globalY, int globalZ) const {
+glm::ivec3 World::ToLocalCoords(int globalX, int globalY, int globalZ) {
   return {
     MathUtil::Mod(globalX, Chunk::CHUNK_WIDTH),
     globalY,

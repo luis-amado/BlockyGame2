@@ -10,6 +10,7 @@ void ShaderLibrary::LoadShaders() {
   // This function must contain all the shaders used
   Load("main");
   Load("line");
+  Load("shape");
   Load("textured_ui");
   Load("colored_ui");
 }
@@ -18,7 +19,7 @@ Shader& ShaderLibrary::Get(const std::string& name) const {
 #ifdef DEBUG
   if (!m_shaders.count(name)) {
     LOG(FATAL) << "Shader not found: " << name;
-}
+  }
 #endif
   return *m_shaders.at(name);
 }

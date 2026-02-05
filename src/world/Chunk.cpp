@@ -485,7 +485,7 @@ void Chunk::Draw(Shader& shader) const {
   glm::mat4 model(1.0f);
   const DebugSettings& settings = DebugSettings::instance;
 
-  model = glm::translate(model, { m_chunkCoord.x * (CHUNK_WIDTH + settings.chunkSplit), 0, m_chunkCoord.y * (CHUNK_WIDTH + settings.chunkSplit) });
+  model = glm::translate(model, { m_chunkCoord.x * CHUNK_WIDTH, 0, m_chunkCoord.y * CHUNK_WIDTH });
   for (int i = 0; i < SUBCHUNK_LAYERS; i++) {
     if (m_subchunkMeshes[i].HasData()) {
       shader.LoadMatrix4f("model", model);

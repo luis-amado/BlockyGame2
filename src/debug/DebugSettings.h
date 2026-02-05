@@ -16,7 +16,8 @@ public:
   int meshWorkerCount = 4;
 
   // world visualization changes
-  float chunkSplit = 0.0f;
+  bool showChunkBoundaries = true;
+  bool showPlayerHitbox = false;
 
   // terrain generation settings
   double noiseScale = 100.0;

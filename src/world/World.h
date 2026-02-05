@@ -43,8 +43,8 @@ public:
   const Block& GetBlockAt(int globalX, int globalY, int globalZ) const;
   char GetLightAt(LightType type, int globalX, int globalY, int globalZ) const;
   void SetLightAt(LightType type, int globalX, int globalY, int globalZ, char value);
-  glm::ivec2 GetChunkCoord(int globalX, int globalZ) const;
-  glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ) const;
+  static glm::ivec2 GetChunkCoord(int globalX, int globalZ);
+  static glm::ivec3 ToLocalCoords(int globalX, int globalY, int globalZ);
   glm::ivec3 ToLocalCoords(glm::ivec3 global) const;
 
   void RemoveChunk(glm::ivec2 chunkCoord);
