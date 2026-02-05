@@ -6,6 +6,7 @@
 #include "util/MathUtil.h"
 #include "../debug/DebugSettings.h"
 #include <array>
+#include <cmath>
 
 namespace {
 
@@ -54,6 +55,15 @@ std::vector<float> VoxelData::GetFaceVertices(int x, int y, int z, Chunk& chunk,
 
   std::array<float, 4> skyCornerLights = GetCornerLightValues(x, y, z, LightType::SKY, face, chunk);
   std::array<float, 4> blockCornerLights = GetCornerLightValues(x, y, z, LightType::BLOCK, face, chunk);
+
+  // Make sure light sources are not dimmed
+  char blockLight = block.GetLightLevel();
+  if (blockLight > 0) {
+    for (float& blockCornerLight : blockCornerLights) {
+      blockCornerLight = std::max(blockCornerLight, blockLight / 15.0f);
+    }
+  }
+
   switch (face) {
   case Direction::SOUTH: {
     return {

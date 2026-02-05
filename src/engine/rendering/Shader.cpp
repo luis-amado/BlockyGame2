@@ -80,9 +80,24 @@ void Shader::LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix) {
   glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
+void Shader::LoadVector4f(const std::string& uniform, const glm::vec4& vec) {
+  unsigned int location = GetUniformLocation(uniform);
+  glUniform4fv(location, 1, glm::value_ptr(vec));
+}
+
 void Shader::LoadVector3f(const std::string& uniform, const glm::vec3& vec) {
   unsigned int location = GetUniformLocation(uniform);
   glUniform3fv(location, 1, glm::value_ptr(vec));
+}
+
+void Shader::LoadVector2f(const std::string& uniform, const glm::vec2& vec) {
+  unsigned int location = GetUniformLocation(uniform);
+  glUniform2fv(location, 1, glm::value_ptr(vec));
+}
+
+void Shader::LoadInt(const std::string& uniform, int value) {
+  unsigned int location = GetUniformLocation(uniform);
+  glUniform1i(location, value);
 }
 
 void Shader::LoadBool(const std::string& uniform, bool value) {

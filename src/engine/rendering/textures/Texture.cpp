@@ -5,7 +5,12 @@
 #include <string>
 #include "util/Logging.h"
 
-Texture::Texture(const std::string& fileName) {
+Texture::Texture() {
+  glGenTextures(1, &m_textureID);
+  glBindTexture(GL_TEXTURE_2D, m_textureID);
+}
+
+Texture::Texture(const std::string& fileName, const std::string& extension) {
   glGenTextures(1, &m_textureID);
   glBindTexture(GL_TEXTURE_2D, m_textureID);
 
@@ -17,15 +22,15 @@ Texture::Texture(const std::string& fileName) {
 
   int width, height, channels;
   stbi_set_flip_vertically_on_load(true);
-  std::string filePath = "res/textures/" + fileName;
-  unsigned char* image_data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
+  std::string filePath = "res/textures/" + fileName + extension;
+
+  unsigned char* image_data = stbi_load(filePath.c_str(), &width, &height, &channels, 4);
 
   if (image_data != nullptr) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
     glGenerateMipmap(GL_TEXTURE_2D);
-    LOG(INFO) << "Loaded texture: " << fileName;
   } else {
-    LOG(ERROR) << "Failed to load texture: " << fileName;
+    LOG(ERROR) << "Failed to load texture: " << fileName + extension;
   }
 
   stbi_image_free(image_data);

@@ -18,9 +18,10 @@ public:
   static const Block& IRON_ORE;
   static const Block& BEDROCK;
   static const Block& OAK_LOG;
+  static const Block& OAK_PLANKS;
   static const Block& OAK_LEAVES;
   static const Block& GLOWSTONE;
-  static const Block& SHROOMLIGHT;
+  static const Block& GLASS;
 
   static void InitializeBlocks();
   static void GenerateBlockAtlas();

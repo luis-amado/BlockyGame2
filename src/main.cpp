@@ -12,7 +12,6 @@
 #include "engine/rendering/Shader.h"
 #include "engine/rendering/textures/TextureAtlasBuilder.h"
 #include "engine/rendering/textures/TextureAtlas.h"
-#include "engine/rendering/Mesh.h"
 #include "engine/io/Window.h"
 #include "engine/io/Input.h"
 #include "engine/io/Time.h"
@@ -22,10 +21,9 @@
 #include "entity/PlayerEntity.h"
 #include "engine/rendering/ShaderLibrary.h"
 #include "engine/rendering/buffers/ResourceGraveyard.h"
-
 #include "world/World.h"
-
 #include "init/Blocks.h"
+#include "ui/GameUI.h"
 
 const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 800;
@@ -54,17 +52,17 @@ int main() {
   ShaderLibrary& shaders = ShaderLibrary::GetInstance();
   shaders.LoadShaders();
 
-  Input::SubscribeKeyCallback(GLFW_KEY_F3, [](int action, int mods) {
-    if (action == GLFW_PRESS) {
-      DebugInformation::Toggle();
-    }
-  });
-
   window.Setup();
   DebugInformation::Setup(window);
 
   float fov = DebugSettings::instance.defaultFOV;
   float fovChangeTime = 0.1f;
+
+  GameUI gameUI(player);
+  gameUI.Update(window);
+  window.OnResize([&](int width, int height) {
+    gameUI.Update(window);
+  });
 
   while (window.IsRunning()) {
     window.BeginFrame();
@@ -92,6 +90,8 @@ int main() {
     }
 
     DebugInformation::ShowIfActive(world, player);
+
+    gameUI.Draw();
 
     window.FinishFrame();
   }

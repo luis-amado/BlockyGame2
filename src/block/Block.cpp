@@ -50,8 +50,17 @@ Block& Block::LightLevel(char lightLevel) {
   return *this;
 }
 
+Block& Block::TransparentHidesNeighbors() {
+  m_transparentHideNeighbors = true;
+  return *this;
+}
+
 bool Block::IsSolid() const {
   return m_isSolid;
+}
+
+bool Block::ShouldHideNeighbors() const {
+  return m_transparentHideNeighbors;
 }
 
 bool Block::IsAir() const {

@@ -7,7 +7,8 @@
 class Texture {
 
 public:
-  explicit Texture(const std::string& fileName);
+  Texture();
+  explicit Texture(const std::string& fileName, const std::string& extension = ".png");
   Texture(int width, int height, unsigned char* imageData, int mipmapLevels = 0);
   ~Texture();
 

@@ -2,7 +2,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_set>
-#include <cassert>
 
 #include "util/Logging.h"
 #include "util/Noise.h"
@@ -12,6 +11,7 @@
 #include "../voxel/VoxelData.h"
 #include "World.h"
 #include "../debug/DebugSettings.h"
+#include "util/DebugMacros.h"
 
 #include "../init/Blocks.h"
 #include "../block/Block.h"
@@ -69,11 +69,12 @@ void Chunk::PropagateLightingAtPos(glm::ivec3 localPosition, Blockstate oldBlock
   PositionsToSpreadLightMap positionsToSpread;
 
   // Handle Sky light
-  SetLightAt(LightType::SKY, XYZ(localPosition), 0);
   if (newBlock.IsSolid() && !oldBlock.IsSolid()) {
     // Light removal dfs
+    SetLightAt(LightType::SKY, XYZ(localPosition), 0);
     LightRemovingDFS(LightType::SKY, XYZ(localPosition), 0, oldSkyLight, positionsToSpread);
   } else if (!newBlock.IsSolid() && oldBlock.IsSolid()) {
+    SetLightAt(LightType::SKY, XYZ(localPosition), 0);
     LightUpdatingDFS(LightType::SKY, XYZ(localPosition));
   }
 
@@ -252,7 +253,7 @@ void Chunk::LightRemovingDFS(LightType type, int x, int y, int z, char value, ch
     if (currLight < startingValue && currLight > newValue) {
       LightRemovingDFS(type, XYZ(pos), newValue, startingValue - 1, positionsToSpreadAfter);
     }
-    // Sky light going down
+    // Sky light going down directly (light level doesn't decrease)
     if (type == LightType::SKY && startingValue == 15 && currLight == 15 && offset.y < 0) {
       LightRemovingDFS(type, XYZ(pos), newValue, startingValue, positionsToSpreadAfter);
     }
@@ -369,15 +370,15 @@ void Chunk::GenerateTerrain() {
         }
 
         // TREE PASS
-        if (y > terrainHeight && m_blockstates[PosToIndex(x, terrainHeight, z)] == Blocks::GRASS) {
-          if (treeValue < 0.01) {
-            if (y < terrainHeight + treeHeight + 1) {
-              blockstate = Blocks::OAK_LOG;
-            } else if (y <= terrainHeight + treeHeight + 2) {
-              blockstate = Blocks::OAK_LEAVES;
-            }
-          }
-        }
+        // if (y > terrainHeight && m_blockstates[PosToIndex(x, terrainHeight, z)] == Blocks::GRASS) {
+        //   if (treeValue < 0.01) {
+        //     if (y < terrainHeight + treeHeight + 1) {
+        //       blockstate = Blocks::OAK_LOG;
+        //     } else if (y <= terrainHeight + treeHeight + 2) {
+        //       blockstate = Blocks::OAK_LEAVES;
+        //     }
+        //   }
+        // }
 
         m_blockstates[PosToIndex(x, y, z)] = blockstate;
         m_lights[PosToIndex(x, y, z)].SetLight(LightType::BLOCK, Block::FromBlockstate(blockstate).GetLightLevel());
@@ -417,7 +418,8 @@ void Chunk::GenerateMeshForSubchunk(int i) {
         for (const auto& face : DirectionUtil::GetAllDirections()) {
           glm::ivec3 offset = VoxelData::GetFaceOffset(face);
           // Skip face if there is a neighbor in that direction
-          if (Block::FromBlockstate(GetBlockstateAt(x + offset.x, y + offset.y + y0, z + offset.z)).IsSolid()) continue;
+          const Block& neighborBlock = GetBlockAt(x + offset.x, y + offset.y + y0, z + offset.z);
+          if (neighborBlock.IsSolid() || (block.ShouldHideNeighbors() && block == neighborBlock)) continue;
 
           std::vector<float> faceVertices = VoxelData::GetFaceVertices(x, y + y0, z, *this, face, block);
           vertices.insert(vertices.end(), faceVertices.begin(), faceVertices.end());
@@ -653,7 +655,7 @@ char SkyBlockLight::GetLight(LightType type) {
 }
 
 void SkyBlockLight::SetLight(LightType type, char value) {
-  assert(value >= 0 && value <= 15);
+  DEBUG_ASSERT(value >= 0 && value <= 15) << "Light level invalid";
 
   if (type == LightType::SKY) {
     m_value &= (unsigned char)0b11110000;

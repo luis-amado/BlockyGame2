@@ -18,7 +18,10 @@ public:
   void Use() const;
 
   void LoadMatrix4f(const std::string& uniform, const glm::mat4& matrix);
+  void LoadVector4f(const std::string& uniform, const glm::vec4& vec);
   void LoadVector3f(const std::string& uniform, const glm::vec3& vec);
+  void LoadVector2f(const std::string& uniform, const glm::vec2& vec);
+  void LoadInt(const std::string& uniform, int value);
   void LoadBool(const std::string& uniform, bool value);
 
 private:

@@ -26,6 +26,8 @@ public:
   void UpdateLookingAt(const World& world);
   const std::optional<glm::ivec3>& GetLookingAtBlock() const;
 
+  static const std::vector<const Block*>& GetPlaceableBlocks();
+  void SetOnSelectedSlotChanged(std::function<void(int)> callback);
 
 private:
   double m_walkSpeed = DebugSettings::instance.walkSpeed;
@@ -41,7 +43,8 @@ private:
   std::optional<glm::ivec3> m_lookingAtBlock;
   std::optional<glm::ivec3> m_placingAtBlock;
 
-  Blockstate m_selectedBlock = Blocks::STONE;
+  int m_selectedSlot = 0;
+  std::function<void(int)> m_onSelectedSlotChanged;
 
   // Used for smoothing face movements
   glm::dvec2 m_rotationVelocity;

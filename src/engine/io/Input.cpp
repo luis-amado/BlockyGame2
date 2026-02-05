@@ -43,7 +43,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
   int inputNumber = GLFW_KEY_LAST + button + 1;
 
   for (const InputCallback& callback : Input::s_inputCallbacks[inputNumber]) {
-    callback(action, mods);
+    callback(inputNumber, action, mods);
   }
 
   if (action == GLFW_PRESS) {
@@ -81,7 +81,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
   }
 
   for (const InputCallback& callback : Input::s_inputCallbacks[key]) {
-    callback(action, mods);
+    callback(key, action, mods);
   }
 
   if (action == GLFW_PRESS) {
@@ -166,6 +166,12 @@ void Input::Resized() {
 
 void Input::SubscribeKeyCallback(int key, InputCallback callback) {
   s_inputCallbacks[key].push_back(callback);
+}
+
+void Input::SubscribeKeyCallbackRange(int startKey, int endKey, InputCallback callback) {
+  for (int i = startKey; i <= endKey; i++) {
+    s_inputCallbacks[i].push_back(callback);
+  }
 }
 
 void Input::UnsubscribeKeyCallback(int key, InputCallback callback) {}

@@ -23,8 +23,10 @@ public:
   Block& NotSolid();
   Block& Air();
   Block& LightLevel(char lightLevel);
+  Block& TransparentHidesNeighbors();
 
   bool IsSolid() const;
+  bool ShouldHideNeighbors() const;
   bool IsAir() const;
   char GetLightLevel() const;
 
@@ -35,6 +37,7 @@ private:
   // Properties
   bool m_isSolid = true;
   bool m_isAir = false;
+  bool m_transparentHideNeighbors = false;
   char m_lightLevel = 0;
 
   static char s_blockstateIndex;

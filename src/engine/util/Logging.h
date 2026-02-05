@@ -5,13 +5,13 @@
 #include <mutex>
 
 namespace {
-#define RESET "\033[0m"
-#define RED "\033[31m"
-#define YELLOW "\033[33m"
-#define GREEN "\033[32m"
-#define CYAN "\033[36m"
-#define BLUE "\033[34m"
-#define GRAY "\033[90m"
+#define TERM_RESET "\033[0m"
+#define TERM_RED "\033[31m"
+#define TERM_YELLOW "\033[33m"
+#define TERM_GREEN "\033[32m"
+#define TERM_CYAN "\033[36m"
+#define TERM_BLUE "\033[34m"
+#define TERM_GRAY "\033[90m"
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 } // namespace
@@ -42,7 +42,7 @@ public:
       std::cout << getSeverityLabel(severity) << ' ';
 
       if (s_showLogFile) {
-        std::cout << GRAY << "(" << file << ':' << line << ") " << RESET;
+        std::cout << TERM_GRAY << "(" << file << ':' << line << ") " << TERM_RESET;
       }
     }
   }
@@ -72,12 +72,12 @@ private:
 
   inline std::string getSeverityLabel(LogSeverity severity) {
     switch (severity) {
-    case EXTRA: return std::string(GRAY) + "[EXTRA]" + RESET;
-    case INFO:  return std::string(GREEN) + "[INFO]" + RESET;
-    case INFO2: return std::string(CYAN) + "[INFO]" + RESET;
-    case WARN:  return std::string(YELLOW) + "[WARNING]" + RESET;
-    case ERROR: return std::string(RED) + "[ERROR]" + RESET;
-    case FATAL: return std::string(RED) + "[FATAL]" + RESET;
+    case EXTRA: return std::string(TERM_GRAY) + "[EXTRA]" + TERM_RESET;
+    case INFO:  return std::string(TERM_GREEN) + "[INFO]" + TERM_RESET;
+    case INFO2: return std::string(TERM_CYAN) + "[INFO]" + TERM_RESET;
+    case WARN:  return std::string(TERM_YELLOW) + "[WARNING]" + TERM_RESET;
+    case ERROR: return std::string(TERM_RED) + "[ERROR]" + TERM_RESET;
+    case FATAL: return std::string(TERM_RED) + "[FATAL]" + TERM_RESET;
     default:    return "UNKNOWN";
     }
   }
@@ -85,4 +85,4 @@ private:
 
 #define LOG(severity) Logger(severity, __FILENAME__, __LINE__)
 
-#define LOG_STATEMENT(statement, severity) LOG(severity) << #statement << " = " << statement << " "
+#define LOG_STATEMENT(severity, statement) LOG(severity) << #statement << " = " << statement << " "

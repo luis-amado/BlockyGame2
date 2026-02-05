@@ -6,8 +6,11 @@
 #include <optional>
 #include <glm/vec2.hpp>
 #include <vector>
+#include <functional>
 
 #include "util/ClassMacros.h"
+
+using ResizeCallback = std::function<void(int width, int height)>;
 
 class Window {
 public:
@@ -21,6 +24,8 @@ public:
   GLFWwindow* GetHandle() const;
   ImGuiIO& GetImGuiIO() const;
   glm::ivec2 GetFrame() const;
+  glm::ivec2 GetSize() const;
+  glm::vec2 GetContentScale() const;
   float GetAspectRatio() const;
   bool IsRunning() const;
 
@@ -31,6 +36,8 @@ public:
   // Call this function once at the end of each game loop iteration
   void FinishFrame() const;
 
+  void OnResize(ResizeCallback callback);
+
 private:
   explicit Window(GLFWwindow* handle, int winWidth, int winHeight);
 
@@ -39,6 +46,7 @@ private:
 
   bool m_fullscreen = false;
   int m_prevWinXPos, m_prevWinYPos, m_prevMinWidth, m_prevWinHeight;
+  std::vector<ResizeCallback> m_resizeCallbacks;
 
   friend void framebufferSizeCallback(GLFWwindow* windowHandle, int width, int height);
 };

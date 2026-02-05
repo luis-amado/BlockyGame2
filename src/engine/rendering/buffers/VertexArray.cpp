@@ -37,9 +37,7 @@ void AttributeBuilder::AddAttribute(int size) {
 
 void AttributeBuilder::SetupAttributes(const VertexArray& vertexArray) {
   int stride = 0;
-  for (int size : m_attributeSizes) {
-    stride += size;
-  }
+  for (int i = 0; i < m_attributeSizes.size(); i++) stride += m_attributeSizes[i];
 
   int index = 0;
   size_t offset = 0;

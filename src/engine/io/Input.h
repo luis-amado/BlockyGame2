@@ -9,7 +9,7 @@
 
 #include "Window.h"
 
-using InputCallback = std::function<void(int action, int mods)>;
+using InputCallback = std::function<void(int key, int action, int mods)>;
 
 #define KEY_SPACE GLFW_KEY_SPACE
 #define KEY_LEFT_SHIFT GLFW_KEY_LEFT_SHIFT
@@ -35,6 +35,7 @@ public:
   static void Resized();
 
   static void SubscribeKeyCallback(int key, InputCallback callback);
+  static void SubscribeKeyCallbackRange(int startKey, int endKey, InputCallback callback);
   static void UnsubscribeKeyCallback(int key, InputCallback callback);
 private:
   static double s_mouseDX, s_mouseDY, s_mouseDWheel;

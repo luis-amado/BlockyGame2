@@ -12,6 +12,11 @@
 void framebufferSizeCallback(GLFWwindow* windowHandle, int width, int height) {
   glViewport(0, 0, width, height);
   Input::Resized();
+
+  Window* window = reinterpret_cast<Window*>(glfwGetWindowUserPointer(windowHandle));
+  for (const ResizeCallback& callback : window->m_resizeCallbacks) {
+    callback(width, height);
+  }
 }
 
 std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int windowWidth, int windowHeight) {
@@ -47,9 +52,7 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
     return std::nullopt;
   }
 
-  // Setup user pointer
   Window window = Window(windowHandle, windowWidth, windowHeight);
-  glfwSetWindowUserPointer(windowHandle, &window);
 
   // Setup window callbacks
   glfwSetFramebufferSizeCallback(windowHandle, framebufferSizeCallback);
@@ -109,6 +112,18 @@ glm::ivec2 Window::GetFrame() const {
   return frame;
 }
 
+glm::ivec2 Window::GetSize() const {
+  glm::ivec2 size;
+  glfwGetWindowSize(m_handle, &size.x, &size.y);
+  return size;
+}
+
+glm::vec2 Window::GetContentScale() const {
+  glm::vec2 scale;
+  glfwGetWindowContentScale(m_handle, &scale.x, &scale.y);
+  return scale;
+}
+
 float Window::GetAspectRatio() const {
   int width, height;
   glfwGetFramebufferSize(m_handle, &width, &height);
@@ -120,6 +135,8 @@ bool Window::IsRunning() const {
 }
 
 void Window::Setup() {
+  glfwSetWindowUserPointer(m_handle, this);
+
   Time::Start();
 
   // SETUP IMGUI
@@ -146,4 +163,8 @@ void Window::FinishFrame() const {
   glfwSwapBuffers(m_handle);
   Input::Reset();
   glfwPollEvents();
+}
+
+void Window::OnResize(ResizeCallback callback) {
+  m_resizeCallbacks.push_back(callback);
 }

@@ -21,6 +21,7 @@
 
 #include "../block/Block.h"
 #include "../init/Blocks.h"
+#include "../engine/io/Input.h"
 #include "../engine/rendering/ShaderLibrary.h"
 
 bool DebugInformation::s_showDebugInformation = false;
@@ -289,6 +290,12 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 }
 
 void DebugInformation::Setup(const Window& window) {
+  Input::SubscribeKeyCallback(GLFW_KEY_F3, [](int key, int action, int mods) {
+    if (action == GLFW_PRESS) {
+      Toggle();
+    }
+  });
+
   s_font = window.GetImGuiIO().Fonts->AddFontFromFileTTF("res/fonts/Minecraft.ttf", 20.0f, NULL);
 }
 

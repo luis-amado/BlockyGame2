@@ -19,9 +19,10 @@ const Block& Blocks::COAL_ORE = s_registry.Register(Block("coal_ore", BlockTextu
 const Block& Blocks::IRON_ORE = s_registry.Register(Block("iron_ore", BlockTextures::All("block/iron_ore")));
 const Block& Blocks::BEDROCK = s_registry.Register(Block("bedrock", BlockTextures::All("block/bedrock")));
 const Block& Blocks::OAK_LOG = s_registry.Register(Block("oak_log", BlockTextures::SideEnd("block/oak_log", "block/oak_log_top")));
+const Block& Blocks::OAK_PLANKS = s_registry.Register(Block("oak_planks", BlockTextures::All("block/oak_planks")));
 const Block& Blocks::OAK_LEAVES = s_registry.Register(Block("oak_leaves", BlockTextures::All("block/oak_leaves")).NotSolid());
 const Block& Blocks::GLOWSTONE = s_registry.Register(Block("glowstone", BlockTextures::All("block/glowstone")).LightLevel(15));
-const Block& Blocks::SHROOMLIGHT = s_registry.Register(Block("shroomlight", BlockTextures::All("block/shroomlight")).LightLevel(5));
+const Block& Blocks::GLASS = s_registry.Register(Block("glass", BlockTextures::All("block/glass")).NotSolid().TransparentHidesNeighbors());
 
 void Blocks::InitializeBlocks() {
   for (auto& [registryName, block] : s_registry.GetAll()) {

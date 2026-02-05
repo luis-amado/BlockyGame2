@@ -10,6 +10,8 @@ void ShaderLibrary::LoadShaders() {
   // This function must contain all the shaders used
   Load("main");
   Load("line");
+  Load("textured_ui");
+  Load("colored_ui");
 }
 
 Shader& ShaderLibrary::Get(const std::string& name) const {

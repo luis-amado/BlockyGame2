@@ -11,6 +11,7 @@
 #include "util/Logging.h"
 #include "../init/Blocks.h"
 #include "../physics/AABB.h"
+#include "util/MathUtil.h"
 
 namespace {
 const double sensitivity = 0.1;
@@ -95,14 +96,11 @@ std::optional<std::pair<glm::ivec3, glm::ivec3>> RaycastToBlockHit2(const World&
 }  // namespace
 
 PlayerEntity::PlayerEntity() {
-  Input::SubscribeKeyCallback('1', [&](int action, int mods) {
-    m_selectedBlock = Blocks::STONE;
-  });
-  Input::SubscribeKeyCallback('2', [&](int action, int mods) {
-    m_selectedBlock = Blocks::GLOWSTONE;
-  });
-  Input::SubscribeKeyCallback('3', [&](int action, int mods) {
-    m_selectedBlock = Blocks::SHROOMLIGHT;
+  Input::SubscribeKeyCallbackRange('1', '9', [&](int key, int action, int mods) {
+    if (action != GLFW_PRESS) return;
+    m_selectedSlot = key - '1';
+    m_selectedSlot = MathUtil::Clamp(m_selectedSlot, 0, (int)GetPlaceableBlocks().size());
+    m_onSelectedSlotChanged(m_selectedSlot);
   });
 }
 
@@ -205,9 +203,13 @@ void PlayerEntity::Update(World& world) {
     SetDisableCollision(m_ghost);
   }
 
-  m_speedMultiplier += Input::GetMouseDWheel() * (1.0 / 3.0 * 0.1);
+  if (Input::IsPressed(GLFW_KEY_UP)) {
+    m_speedMultiplier += (1.0 / 3.0 * 0.1);
+  }
+  if (Input::IsPressed(GLFW_KEY_DOWN)) {
+    m_speedMultiplier -= (1.0 / 3.0 * 0.1);
+  }
   m_speedMultiplier = MathUtil::Clamp(m_speedMultiplier, 0.1, 300.0);
-
   double speed = m_walkSpeed * m_speedMultiplier;
 
   if (Input::IsPressed('A')) {
@@ -233,7 +235,7 @@ void PlayerEntity::Update(World& world) {
   } else {
     if (Input::IsPressed(KEY_SPACE)) {
       if (IsGrounded()) {
-        if (m_timeSinceLastAutoJump > 0.02) {
+        if (m_timeSinceLastAutoJump > 0.03) {
           Jump();
         } else {
           m_timeSinceLastAutoJump += Time::deltaTime;
@@ -259,19 +261,47 @@ void PlayerEntity::Update(World& world) {
 
   UpdateLookingAt(world);
 
+  // Change the selected slot with scroll wheel
+  bool selectedSlotChanged = false;
+  if (Input::GetMouseDWheel() < 0) {
+    m_selectedSlot++;
+    selectedSlotChanged = true;
+  } else if (Input::GetMouseDWheel() > 0) {
+    m_selectedSlot--;
+    selectedSlotChanged = true;
+  }
+
+  // Change the selected slot with pick block (middle mouse button)
+  if (Input::IsJustPressed(MOUSE_BTN_MIDDLE) && m_lookingAtBlock.has_value()) {
+    const Block& currentBlock = world.GetBlockAt(XYZ(m_lookingAtBlock.value()));
+    const std::vector<const Block*>& blocks = GetPlaceableBlocks();
+    for (int i = 0; i < blocks.size(); i++) {
+      if (blocks[i] == &currentBlock) {
+        m_selectedSlot = i;
+        selectedSlotChanged = true;
+        break;
+      }
+    }
+  }
+
+  if (selectedSlotChanged) {
+    m_selectedSlot = MathUtil::Mod(m_selectedSlot, GetPlaceableBlocks().size());
+    m_onSelectedSlotChanged(m_selectedSlot);
+  }
+
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_LEFT) && m_lookingAtBlock.has_value()) {
     world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
   }
   if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
     if (m_ghost) {
-      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, m_selectedBlock);
+      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
     } else {
       BoundingBox bb = GetBoundingBox();
       AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
       AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
 
       if (!playerAABB.IsColliding(blockAABB)) {
-        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, m_selectedBlock);
+        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
       }
     }
   }
@@ -315,4 +345,25 @@ void PlayerEntity::UpdateLookingAt(const World& world) {
 
 const std::optional<glm::ivec3>& PlayerEntity::GetLookingAtBlock() const {
   return m_lookingAtBlock;
+}
+
+const std::vector<const Block*>& PlayerEntity::GetPlaceableBlocks() {
+  static std::vector<const Block*> blocks = {
+    &Blocks::GRASS,
+    &Blocks::DIRT,
+    &Blocks::STONE,
+    &Blocks::GLASS,
+    &Blocks::OAK_LOG,
+    &Blocks::OAK_PLANKS,
+    &Blocks::OAK_LEAVES,
+    &Blocks::GLOWSTONE,
+    &Blocks::IRON_ORE,
+    &Blocks::COAL_ORE,
+  };
+  return blocks;
+}
+
+void PlayerEntity::SetOnSelectedSlotChanged(std::function<void(int)> callback) {
+  m_onSelectedSlotChanged = callback;
+  callback(m_selectedSlot);
 }
