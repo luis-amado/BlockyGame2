@@ -329,7 +329,6 @@ void Chunk::GenerateTerrain() {
       int terrainHeight = settings.baseTerrainHeight + terrainDifference;
 
       double treeValue = Noise::RandomNoise2D(x0 + x, z0 + z, 0, 0);
-      int treeHeight = MathUtil::IntLerp(5, 9, Noise::RandomNoise2D(x0 + x, z0 + z, 1000, 1000));
 
       for (int y = 0; y < CHUNK_HEIGHT; y++) {
 
@@ -369,22 +368,23 @@ void Chunk::GenerateTerrain() {
           }
         }
 
-        // TREE PASS
-        // if (y > terrainHeight && m_blockstates[PosToIndex(x, terrainHeight, z)] == Blocks::GRASS) {
-        //   if (treeValue < 0.01) {
-        //     if (y < terrainHeight + treeHeight + 1) {
-        //       blockstate = Blocks::OAK_LOG;
-        //     } else if (y <= terrainHeight + treeHeight + 2) {
-        //       blockstate = Blocks::OAK_LEAVES;
-        //     }
-        //   }
-        // }
+        // TREE PASS (Structure)
+        // TODO: Change to a sculpting -> structures -> painting terrain generation
+        // This will enable just sculpting to be performed when adding structures
+        // Also, create a more robust structure system (with objects)
+        if (y == terrainHeight + 1 && m_blockstates[PosToIndex(x, terrainHeight, z)] == Blocks::GRASS) {
+          if (treeValue < 0.01) {
+            m_treeLocations.push_back({ x, y, z });
+          }
+        }
 
         m_blockstates[PosToIndex(x, y, z)] = blockstate;
         m_lights[PosToIndex(x, y, z)].SetLight(LightType::BLOCK, Block::FromBlockstate(blockstate).GetLightLevel());
       }
     }
   }
+
+  SpawnTrees();
 
   FillSkyLight();
 
@@ -644,6 +644,30 @@ glm::ivec3 Chunk::ToNeighborCoords(int localX, int localY, int localZ) const {
     localY,
     MathUtil::Mod(localZ, Chunk::CHUNK_WIDTH)
   };
+}
+
+void Chunk::SpawnTrees() {
+  for (const auto& pos : m_treeLocations) {
+    int x = pos.x;
+    int y = pos.y;
+    int z = pos.z;
+
+    int treeHeight = MathUtil::IntLerp(5, 9, Noise::RandomNoise2D(x, z, 1000, 1000));
+
+    SetBlockstateAt(x, y - 1, z, Blocks::DIRT);
+    for (int i = 0; i < treeHeight; i++) {
+      SetBlockstateAt(x, y + i, z, Blocks::OAK_LOG);
+    }
+
+    for (int dx = -2; dx <= 2; dx++) {
+      for (int dy = -2; dy <= 2; dy++) {
+        for (int dz = -2; dz <= 2; dz++) {
+          if (dx == 0 && dz == 0 && dy < 0) continue;
+          SetBlockstateAt(x + dx, y + dy + treeHeight, z + dz, Blocks::OAK_LEAVES);
+        }
+      }
+    }
+  }
 }
 
 char SkyBlockLight::GetLight(LightType type) {

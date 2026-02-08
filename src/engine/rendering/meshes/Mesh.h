@@ -1,8 +1,8 @@
 #pragma once
 
-#include "buffers/VertexArray.h"
-#include "buffers/VertexBuffer.h"
-#include "buffers/IndexBuffer.h"
+#include "rendering/buffers/VertexArray.h"
+#include "rendering/buffers/VertexBuffer.h"
+#include "rendering/buffers/IndexBuffer.h"
 
 class Mesh {
 public:

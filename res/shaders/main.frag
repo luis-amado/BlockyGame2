@@ -6,12 +6,15 @@ in vec2 light;
 
 uniform sampler2D tex;
 uniform bool nightVision;
+uniform bool nightTime;
 
 float ambientLighting = 0.1;
 
 void main() {
 
+  // light = vec2(sky, block)
   float maxLight = max(light.x, light.y);
+  if (nightTime) maxLight = light.y;
   
   if (nightVision) {
     ambientLighting = 0.8;

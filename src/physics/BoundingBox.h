@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../engine/rendering/LineMesh.h"
+#include "rendering/meshes/LineMesh.h"
 
 struct BoundingBox {
 

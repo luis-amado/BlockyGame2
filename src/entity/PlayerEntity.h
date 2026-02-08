@@ -26,6 +26,9 @@ public:
   void UpdateLookingAt(const World& world);
   const std::optional<glm::ivec3>& GetLookingAtBlock() const;
 
+  void SetGhost(bool ghost);
+  bool IsGhost() const;
+
   static const std::vector<const Block*>& GetPlaceableBlocks();
   void SetOnSelectedSlotChanged(std::function<void(int)> callback);
 
@@ -33,6 +36,8 @@ private:
   double m_walkSpeed = DebugSettings::instance.walkSpeed;
   double m_sprintMultiplier = DebugSettings::instance.sprintMultiplier;
   double m_speedMultiplier = 1.0;
+
+  double GetStandingEyeLevel() const;
 
   bool m_flying = false;
   bool m_ghost = false;

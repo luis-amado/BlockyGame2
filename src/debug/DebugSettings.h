@@ -41,6 +41,7 @@ public:
   int terrainRange[2] = { -10, 80 };
 
   bool nightVision = false;
+  bool nightTime = false;
 
   // movement settings
   double gravity = -22.0;

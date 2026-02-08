@@ -350,6 +350,7 @@ void World::Draw() const {
   Shader& shader = ShaderLibrary::GetInstance().Get("main");
   shader.Use();
   shader.LoadBool("nightVision", DebugSettings::instance.nightVision);
+  shader.LoadBool("nightTime", DebugSettings::instance.nightTime);
   Blocks::GetAtlas().Use();
   m_chunks.forEach([&](glm::ivec2 coord, std::shared_ptr<Chunk> chunk) {
     chunk->Draw(shader);

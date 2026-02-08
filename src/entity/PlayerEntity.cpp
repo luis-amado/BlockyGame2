@@ -124,7 +124,8 @@ BoundingBox PlayerEntity::GetBoundingBox() const {
 }
 
 double PlayerEntity::GetEyeLevel() const {
-  return 1.55;
+  if (m_ghost) return 0.0;
+  return GetStandingEyeLevel();
 }
 
 double PlayerEntity::GetSpeedMultiplier() const {
@@ -177,9 +178,8 @@ void PlayerEntity::Update(World& world) {
     m_flying = !m_flying;
     SetDisableGravity(m_flying);
     if (!m_flying) {
-      m_ghost = false;
+      SetGhost(false);
       m_speedMultiplier = 1.0;
-      SetDisableCollision(false);
     }
   }
 
@@ -195,12 +195,7 @@ void PlayerEntity::Update(World& world) {
 
   // Check for ghost
   if (Input::IsJustPressed('G')) {
-    m_ghost = !m_ghost;
-    if (m_ghost) {
-      m_flying = true;
-      SetDisableGravity(true);
-    }
-    SetDisableCollision(m_ghost);
+    SetGhost(!m_ghost);
   }
 
   if (Input::IsPressed(GLFW_KEY_UP)) {
@@ -347,6 +342,26 @@ const std::optional<glm::ivec3>& PlayerEntity::GetLookingAtBlock() const {
   return m_lookingAtBlock;
 }
 
+void PlayerEntity::SetGhost(bool ghost) {
+  glm::dvec3 pos = GetPosition();
+  if (!ghost && m_ghost) {
+    m_ghost = false;
+    SetDisableCollision(false);
+    pos.y -= GetStandingEyeLevel();
+  } else if (ghost) {
+    m_ghost = true;
+    m_flying = true;
+    SetDisableGravity(true);
+    SetDisableCollision(true);
+    pos.y += GetStandingEyeLevel();
+  }
+  SetPosition(pos);
+}
+
+bool PlayerEntity::IsGhost() const {
+  return m_ghost;
+}
+
 const std::vector<const Block*>& PlayerEntity::GetPlaceableBlocks() {
   static std::vector<const Block*> blocks = {
     &Blocks::GRASS,
@@ -366,4 +381,8 @@ const std::vector<const Block*>& PlayerEntity::GetPlaceableBlocks() {
 void PlayerEntity::SetOnSelectedSlotChanged(std::function<void(int)> callback) {
   m_onSelectedSlotChanged = callback;
   callback(m_selectedSlot);
+}
+
+double PlayerEntity::GetStandingEyeLevel() const {
+  return 1.55;
 }

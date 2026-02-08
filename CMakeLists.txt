@@ -21,6 +21,7 @@ include_directories(
   include
   include/imgui
   src/engine
+  src
 )
 
 target_compile_options(main PRIVATE $<$<CONFIG:Debug>:-g -D DEBUG -Wall -Wno-deprecated>)

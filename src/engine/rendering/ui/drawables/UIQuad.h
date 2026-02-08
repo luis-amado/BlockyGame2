@@ -2,7 +2,7 @@
 
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
-#include "../../UIQuadMesh.h"
+#include "../../meshes/UIQuadMesh.h"
 #include "../UIBlock.h"
 
 class UIQuad : public UIBlock {

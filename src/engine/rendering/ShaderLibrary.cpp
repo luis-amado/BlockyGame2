@@ -10,6 +10,7 @@ void ShaderLibrary::LoadShaders() {
   // This function must contain all the shaders used
   Load("main");
   Load("line");
+  Load("colored_lines");
   Load("shape");
   Load("textured_ui");
   Load("colored_ui");

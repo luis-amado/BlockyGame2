@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <atomic>
 #include "util/ClassMacros.h"
-#include "rendering/Mesh.h"
+#include "rendering/meshes/Mesh.h"
 #include "rendering/Shader.h"
 #include <shared_mutex>
 #include "../init/Blocks.h"
@@ -117,6 +117,9 @@ private:
   void LightUpdatingDFS(LightType type, int x, int y, int z);
   void LightRemovingDFS(LightType type, int x, int y, int z, char value, char oldValue, PositionsToSpreadLightMap& positionsToSpreadAfter);
   glm::ivec3 ToNeighborCoords(int localX, int localY, int localZ) const;
+
+  std::vector<glm::ivec3> m_treeLocations;
+  void SpawnTrees();
 
   inline int PosToIndex(int localX, int localY, int localZ) const;
   inline int PosToIndex(const glm::ivec3& local) const;

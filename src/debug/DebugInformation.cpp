@@ -1,22 +1,24 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
-#include "DebugInformation.h"
-
 #include <imgui/imgui.h>
-#include "../world/World.h"
-#include "../engine/io/Time.h"
-#include "DebugSettings.h"
-#include "DebugShapes.h"
-
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 #include <string>
+#include <optional>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "DebugInformation.h"
+
+#include "../world/World.h"
+#include "../engine/io/Time.h"
+#include "DebugSettings.h"
+#include "DebugShapes.h"
+#include "rendering/meshes/ColoredLinesMesh.h"
+
 
 #include "util/Noise.h"
 #include "rendering/textures/Texture.h"
-#include <optional>
 #include "util/Logging.h"
 #include "util/MathUtil.h"
 #include "util/FileUtil.h"
@@ -27,7 +29,6 @@
 #include "../engine/rendering/ShaderLibrary.h"
 
 bool DebugInformation::s_showDebugInformation = false;
-bool DebugInformation::s_showDebugPanel = false;
 ImFont* DebugInformation::s_font = nullptr;
 int DebugInformation::s_fps = 0;
 double DebugInformation::s_lastFPSCheckTime = -1.0;
@@ -71,42 +72,84 @@ std::optional<Texture> noiseTexture = std::nullopt;
 //   return value ? "Yes" : "No";
 // }
 
+void AddLineToMesh(std::vector<float>& vertices, std::vector<unsigned int>& indices, int& vertexCount, glm::vec3 start, glm::vec3 end, glm::vec3 color) {
+  // each line is two vertices
+  vertices.push_back(start.x);
+  vertices.push_back(start.y);
+  vertices.push_back(start.z);
+  vertices.push_back(color.r);
+  vertices.push_back(color.g);
+  vertices.push_back(color.b);
+
+  vertices.push_back(end.x);
+  vertices.push_back(end.y);
+  vertices.push_back(end.z);
+  vertices.push_back(color.r);
+  vertices.push_back(color.g);
+  vertices.push_back(color.b);
+
+  indices.push_back(vertexCount);
+  indices.push_back(vertexCount + 1);
+
+  vertexCount += 2;
+};
+
+ColoredLinesMesh CreateChunkBoundaryMesh() {
+  ColoredLinesMesh mesh;
+
+  int cw = Chunk::CHUNK_WIDTH;
+
+  std::vector<float> vertices;
+  std::vector<unsigned int> indices;
+  int vertexCount = 0;
+
+  // Vertical corners (lower left in yellow, others in red)
+  AddLineToMesh(vertices, indices, vertexCount, { 0, 0, 0 }, { 0, Chunk::CHUNK_HEIGHT, 0 }, { 1.0f, 1.0f, 0.0f });
+  AddLineToMesh(vertices, indices, vertexCount, { cw, 0, 0 }, { cw, Chunk::CHUNK_HEIGHT, 0 }, { 1.0f, 0.0f, 0.0f });
+  AddLineToMesh(vertices, indices, vertexCount, { 0, 0, cw }, { 0, Chunk::CHUNK_HEIGHT, cw }, { 1.0f, 0.0f, 0.0f });
+  AddLineToMesh(vertices, indices, vertexCount, { cw, 0, cw }, { cw, Chunk::CHUNK_HEIGHT, cw }, { 1.0f, 0.0f, 0.0f });
+
+  // Vertical in between lines (off white)
+  for (int i = 1; i <= 15; i++) {
+    AddLineToMesh(vertices, indices, vertexCount, { i, 0, 0 }, { i, Chunk::CHUNK_HEIGHT, 0 }, { 0.8f, 0.8f, 0.8f });
+    AddLineToMesh(vertices, indices, vertexCount, { 0, 0, i }, { 0, Chunk::CHUNK_HEIGHT, i }, { 0.8f, 0.8f, 0.8f });
+    AddLineToMesh(vertices, indices, vertexCount, { i, 0, cw }, { i, Chunk::CHUNK_HEIGHT, cw }, { 0.8f, 0.8f, 0.8f });
+    AddLineToMesh(vertices, indices, vertexCount, { cw, 0, i }, { cw, Chunk::CHUNK_HEIGHT, i }, { 0.8f, 0.8f, 0.8f });
+  }
+
+  // Horizontal lines dividing subchunks in blue, all rest in white
+  for (int y = 0; y < Chunk::CHUNK_HEIGHT; y++) {
+
+    glm::vec3 color = { 0.5f, 0.5f, 0.5f };
+    if (y % Chunk::SUBCHUNK_HEIGHT == 0) color = { 0.0f, 0.0f, 1.0f };
+
+    AddLineToMesh(vertices, indices, vertexCount, { 0, y, 0 }, { cw, y, 0 }, color);
+    AddLineToMesh(vertices, indices, vertexCount, { 0, y, 0 }, { 0, y, cw }, color);
+    AddLineToMesh(vertices, indices, vertexCount, { cw, y, 0 }, { cw, y, cw }, color);
+    AddLineToMesh(vertices, indices, vertexCount, { 0, y, cw }, { cw, y, cw }, color);
+  }
+
+  mesh.SetData(vertices.data(), vertices.size(), indices.data(), indices.size());
+
+  return mesh;
+}
+
 void DrawChunkBoundaries(const glm::dvec3& playerPosition) {
+  // TODO: This is a little slow, can just precalculate this as a mesh and draw it at the position instead as it never changes
   glm::ivec2 chunkCoord = World::GetChunkCoord(std::floor(playerPosition.x), std::floor(playerPosition.z));
 
-  // Draw a line straight up from each block corner
-  // Lines at the edges will be red.
+  static ColoredLinesMesh chunkBoundaryMesh = CreateChunkBoundaryMesh();
+  Shader& shader = ShaderLibrary::GetInstance().Get("colored_lines");
 
-  int x0 = chunkCoord.x * Chunk::CHUNK_WIDTH;
-  int z0 = chunkCoord.y * Chunk::CHUNK_WIDTH;
-  int x1 = x0 + Chunk::CHUNK_WIDTH;
-  int z1 = z0 + Chunk::CHUNK_WIDTH;
+  glm::mat4 model(1.0f);
+  model = glm::translate(model, { chunkCoord.x * Chunk::CHUNK_WIDTH, 0, chunkCoord.y * Chunk::CHUNK_WIDTH });
 
-  DebugShapes::DrawLine({ x0, 0, z0 }, { x0, Chunk::CHUNK_HEIGHT, z0 }, { 1.0f, 0.0f, 0.0f });
-  DebugShapes::DrawLine({ x1, 0, z0 }, { x1, Chunk::CHUNK_HEIGHT, z0 }, { 1.0f, 0.0f, 0.0f });
-  DebugShapes::DrawLine({ x0, 0, z1 }, { x0, Chunk::CHUNK_HEIGHT, z1 }, { 1.0f, 0.0f, 0.0f });
-  DebugShapes::DrawLine({ x1, 0, z1 }, { x1, Chunk::CHUNK_HEIGHT, z1 }, { 1.0f, 0.0f, 0.0f });
+  shader.Use();
+  shader.LoadMatrix4f("model", model);
 
-  // In between lines with white
-  for (int i = 1; i <= 15; i++) {
-    DebugShapes::DrawLine({ x0 + i, 0, z0 }, { x0 + i, Chunk::CHUNK_HEIGHT, z0 }, { 0.8f, 0.8f, 0.8f });
-    DebugShapes::DrawLine({ x0, 0, z0 + i }, { x0, Chunk::CHUNK_HEIGHT, z0 + i }, { 0.8f, 0.8f, 0.8f });
-    DebugShapes::DrawLine({ x0 + i, 0, z1 }, { x0 + i, Chunk::CHUNK_HEIGHT, z1 }, { 0.8f, 0.8f, 0.8f });
-    DebugShapes::DrawLine({ x1, 0, z0 + i }, { x1, Chunk::CHUNK_HEIGHT, z0 + i }, { 0.8f, 0.8f, 0.8f });
-  }
+  chunkBoundaryMesh.Draw();
 
-  // Horizontal lines dividing subchunks in blue
-  for (int subchunk = 0; subchunk < Chunk::SUBCHUNK_LAYERS; subchunk++) {
-
-    //  x0z1  x1z1
-    //  x0z0  x1z0
-
-    int currY = subchunk * Chunk::SUBCHUNK_HEIGHT;
-    DebugShapes::DrawLine({ x0, currY, z0 }, { x1, currY, z0 }, { 0.0f, 0.0f, 1.0f });
-    DebugShapes::DrawLine({ x0, currY, z0 }, { x0, currY, z1 }, { 0.0f, 0.0f, 1.0f });
-    DebugShapes::DrawLine({ x1, currY, z0 }, { x1, currY, z1 }, { 0.0f, 0.0f, 1.0f });
-    DebugShapes::DrawLine({ x0, currY, z1 }, { x1, currY, z1 }, { 0.0f, 0.0f, 1.0f });
-  }
+  return;
 
 }
 
@@ -123,7 +166,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
   if (s_showDebugInformation) {
     glm::dvec3 playerPos = player.GetPosition();
 
-    if (DebugSettings::instance.showPlayerHitbox) {
+    if (DebugSettings::instance.showPlayerHitbox && !player.IsGhost()) {
       glDisable(GL_DEPTH_TEST);
       DebugShapes::DrawBoundingBox(player.GetBoundingBox(), playerPos);
       glEnable(GL_DEPTH_TEST);
@@ -137,7 +180,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
     bool open_ptr = true;
     ImGui::SetNextWindowPos({ 0, 0 });
-    ImGui::SetNextWindowSize({ 1000, 1000 });
+    ImGui::SetNextWindowSize({ 5000, 5000 });
     ImGui::Begin("Debug information", &open_ptr, windowFlags);
     ImGui::Text("FPS: %d", s_fps);
     ImGui::Text("XYZ: %.5f / %.5f / %.5f", playerPos.x, playerPos.y, playerPos.z);
@@ -205,12 +248,6 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
     ImGui::Text("");
 
-    if (ImGui::Button(s_showDebugPanel ? "Hide debug panel" : "Show debug panel")) {
-      s_showDebugPanel = !s_showDebugPanel;
-    }
-
-    ImGui::Text("");
-
     char blockstate = world.GetBlockstateAt(floor(playerPos.x), playerPos.y, floor(playerPos.z));
     std::string blockName = Block::FromBlockstate(blockstate).GetRegistryName();
     ImGui::Text("Blockstate: %d", blockstate);
@@ -218,9 +255,9 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
 
     ImGui::End();
     ImGui::PopFont();
-  }
 
-  if (s_showDebugPanel) {
+    // Debug Panel
+    ImGui::SetNextWindowFocus();
     ImGui::Begin("Debug Panel");
 
     ImGui::BeginTabBar("DebugSettings");
@@ -230,6 +267,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       ImGui::SliderFloat("FOV", &DebugSettings::instance.defaultFOV, 0.0f, 360.0f, "%.0fº");
       ImGui::SliderInt("Render distance", &DebugSettings::instance.renderDistance, 1, 64);
       ImGui::Checkbox("Night vision", &DebugSettings::instance.nightVision);
+      ImGui::Checkbox("Night time", &DebugSettings::instance.nightTime);
 
       if (ImGui::Button(DebugSettings::instance.updateWorld ? "Stop updating world" : "Continue updating world")) {
         DebugSettings::instance.updateWorld = !DebugSettings::instance.updateWorld;
