@@ -34,7 +34,7 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-  glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+  // glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
   GLFWwindow* windowHandle = glfwCreateWindow(windowWidth, windowHeight, windowTitle.c_str(), NULL, NULL);
 
@@ -150,6 +150,7 @@ void Window::Setup() {
 void Window::BeginFrame() const {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   Time::Update();
+  Input::Update();
 
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();

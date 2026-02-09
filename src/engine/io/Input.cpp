@@ -15,6 +15,7 @@ bool Input::s_framebufferTransition = false;
 std::unordered_set<int> Input::s_justPressedInputs;
 std::unordered_map<int, std::vector<InputCallback>> Input::s_inputCallbacks;
 std::unordered_map<int, float> Input::s_timeSinceLastInput;
+std::unordered_map<int, std::vector<InputInterval>> Input::s_registeredInputIntervals;
 
 bool Input::s_cursorShown = false;
 
@@ -121,6 +122,14 @@ bool Input::IsJustDoublePressed(int input) {
   return IsJustPressed(input) && s_timeSinceLastInput.count(input) && s_timeSinceLastInput[input] > 0.03f;
 }
 
+void Input::SubscribeInputHeldInterval(int key, double time, InputCallback callback) {
+  s_registeredInputIntervals[key].push_back(InputInterval {
+    .callback = callback,
+    .time = time,
+    .timePassed = time,
+    });
+}
+
 void Input::Init(Window* window) {
   s_window = window;
 
@@ -138,6 +147,25 @@ void Input::Init(Window* window) {
   glfwSetInputMode(window->GetHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   Reset();
+}
+
+// Should be called when the frame starts
+void Input::Update() {
+  for (auto& [key, intervals] : s_registeredInputIntervals) {
+    if (!IsPressed(key)) {
+      for (auto& interval : intervals) {
+        interval.timePassed = interval.time;
+      }
+    } else {
+      for (auto& interval : intervals) {
+        interval.timePassed += Time::deltaTime;
+        if (interval.timePassed >= interval.time) {
+          interval.callback(key, GLFW_PRESS, 0);
+          interval.timePassed -= interval.time; // reset to 0 (+ any time that might have passed over)
+        }
+      }
+    }
+  }
 }
 
 void Input::Reset() {

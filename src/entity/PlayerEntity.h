@@ -12,13 +12,15 @@ class PlayerEntity : public PhysicsEntity {
 public:
   PlayerEntity();
 
+  void Setup(World* world);
+
   glm::mat4 GetFirstPersonViewMatrix();
   BoundingBox GetBoundingBox() const override;
   double GetEyeLevel() const override;
   double GetSpeedMultiplier() const;
 
   // Special method for player entities that runs once per frame
-  void Update(World& world);
+  void Update();
 
   float GetFOVChange() const;
   std::optional<float> GetFOVOverride() const;
@@ -43,6 +45,10 @@ private:
   bool m_ghost = false;
   bool m_sprinting = false;
   bool m_zoomed = false;
+
+  World* m_world;
+  void PlaceBlock() const;
+  void RemoveBlock() const;
 
   double m_timeSinceLastAutoJump = std::numeric_limits<double>::max();
   std::optional<glm::ivec3> m_lookingAtBlock;

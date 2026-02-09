@@ -19,6 +19,12 @@ using InputCallback = std::function<void(int key, int action, int mods)>;
 #define MOUSE_BTN_RIGHT GLFW_KEY_LAST+2
 #define MOUSE_BTN_MIDDLE GLFW_KEY_LAST+3
 
+struct InputInterval {
+  InputCallback callback;
+  double time;
+  double timePassed = 0.0;
+};
+
 class Input {
 public:
   static double GetMouseDX();
@@ -30,7 +36,10 @@ public:
   static bool IsJustPressed(int key);
   static bool IsJustDoublePressed(int key);
 
+  static void SubscribeInputHeldInterval(int key, double time, InputCallback callback);
+
   static void Init(Window* window);
+  static void Update();
   static void Reset();
   static void Resized();
 
@@ -45,6 +54,7 @@ private:
   static std::unordered_set<int> s_justPressedInputs;
   static std::unordered_map<int, std::vector<InputCallback>> s_inputCallbacks;
   static std::unordered_map<int, float> s_timeSinceLastInput;
+  static std::unordered_map<int, std::vector<InputInterval>> s_registeredInputIntervals;
 
   static bool s_cursorShown;
 

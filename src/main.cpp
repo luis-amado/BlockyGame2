@@ -45,6 +45,7 @@ int main() {
 
   World world(player);
   world.Start();
+  player.Setup(&world);
 
   Blocks::InitializeBlocks();
   Blocks::GenerateBlockAtlas();
@@ -63,6 +64,9 @@ int main() {
   window.OnResize([&](int width, int height) {
     gameUI.Update(window);
   });
+  shaders.OnReloadShaders([&]() {
+    gameUI.Update(window);
+  });
 
   while (window.IsRunning()) {
     window.BeginFrame();
@@ -71,7 +75,7 @@ int main() {
       world.Update();
     }
 
-    player.Update(world);
+    player.Update();
 
     glm::mat4 view = player.GetFirstPersonViewMatrix();
 

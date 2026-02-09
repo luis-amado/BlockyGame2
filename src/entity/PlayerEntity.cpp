@@ -95,12 +95,25 @@ std::optional<std::pair<glm::ivec3, glm::ivec3>> RaycastToBlockHit2(const World&
 
 }  // namespace
 
-PlayerEntity::PlayerEntity() {
+PlayerEntity::PlayerEntity() {}
+
+void PlayerEntity::Setup(World* world) {
+  m_world = world;
+
   Input::SubscribeKeyCallbackRange('1', '9', [&](int key, int action, int mods) {
     if (action != GLFW_PRESS) return;
     m_selectedSlot = key - '1';
     m_selectedSlot = MathUtil::Clamp(m_selectedSlot, 0, (int)GetPlaceableBlocks().size());
     m_onSelectedSlotChanged(m_selectedSlot);
+  });
+
+  Input::SubscribeInputHeldInterval(MOUSE_BTN_LEFT, 0.2, [&](int key, int action, int mods) {
+    if (Input::IsCursorShown()) return;
+    RemoveBlock();
+  });
+  Input::SubscribeInputHeldInterval(MOUSE_BTN_RIGHT, 0.2, [&](int key, int action, int mods) {
+    if (Input::IsCursorShown()) return;
+    PlaceBlock();
   });
 }
 
@@ -132,7 +145,7 @@ double PlayerEntity::GetSpeedMultiplier() const {
   return m_speedMultiplier;
 }
 
-void PlayerEntity::Update(World& world) {
+void PlayerEntity::Update() {
 
   // Update rotation
   if (!Input::IsCursorShown()) {
@@ -249,12 +262,12 @@ void PlayerEntity::Update(World& world) {
   m_velocity.x = newVelocity.x;
   m_velocity.z = newVelocity.z;
 
-  PhysicsUpdate(world);
+  PhysicsUpdate(*m_world);
 
   // Player interactions with the world
   // Physics calculations have been settled at this point
 
-  UpdateLookingAt(world);
+  UpdateLookingAt(*m_world);
 
   // Change the selected slot with scroll wheel
   bool selectedSlotChanged = false;
@@ -268,7 +281,7 @@ void PlayerEntity::Update(World& world) {
 
   // Change the selected slot with pick block (middle mouse button)
   if (Input::IsJustPressed(MOUSE_BTN_MIDDLE) && m_lookingAtBlock.has_value()) {
-    const Block& currentBlock = world.GetBlockAt(XYZ(m_lookingAtBlock.value()));
+    const Block& currentBlock = m_world->GetBlockAt(XYZ(m_lookingAtBlock.value()));
     const std::vector<const Block*>& blocks = GetPlaceableBlocks();
     for (int i = 0; i < blocks.size(); i++) {
       if (blocks[i] == &currentBlock) {
@@ -282,23 +295,6 @@ void PlayerEntity::Update(World& world) {
   if (selectedSlotChanged) {
     m_selectedSlot = MathUtil::Mod(m_selectedSlot, GetPlaceableBlocks().size());
     m_onSelectedSlotChanged(m_selectedSlot);
-  }
-
-  if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_LEFT) && m_lookingAtBlock.has_value()) {
-    world.UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
-  }
-  if (!Input::IsCursorShown() && Input::IsJustPressed(MOUSE_BTN_RIGHT) && m_placingAtBlock.has_value()) {
-    if (m_ghost) {
-      world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
-    } else {
-      BoundingBox bb = GetBoundingBox();
-      AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
-      AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
-
-      if (!playerAABB.IsColliding(blockAABB)) {
-        world.UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
-      }
-    }
   }
 }
 
@@ -385,4 +381,25 @@ void PlayerEntity::SetOnSelectedSlotChanged(std::function<void(int)> callback) {
 
 double PlayerEntity::GetStandingEyeLevel() const {
   return 1.55;
+}
+
+void PlayerEntity::PlaceBlock() const {
+  if (!m_lookingAtBlock.has_value()) return;
+
+  if (m_ghost) {
+    m_world->UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
+  } else {
+    BoundingBox bb = GetBoundingBox();
+    AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
+    AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
+
+    if (!playerAABB.IsColliding(blockAABB)) {
+      m_world->UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
+    }
+  }
+}
+
+void PlayerEntity::RemoveBlock() const {
+  if (!m_lookingAtBlock.has_value()) return;
+  m_world->UpdateBlockstateAt(m_lookingAtBlock->x, m_lookingAtBlock->y, m_lookingAtBlock->z, Blocks::AIR.GetBlockstate());
 }

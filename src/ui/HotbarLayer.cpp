@@ -5,20 +5,18 @@
 
 HotbarSlot::HotbarSlot(const Block& block, int index)
   : UIColoredQuad(GetUnselectedColor(), UIProps {
-    .width = 50,
-    .height = 50,
+    .padding = 2,
     .horizontalAlignment = CENTER,
     .verticalAlignment = CENTER,
     }), m_block(block), m_texture(block.GetTextures().north), m_index(index) {
 
   NewChild<UIColoredQuad>(Color::BLACK, UIProps {
-    .width = 46,
-    .height = 46,
+    .padding = 4,
     .horizontalAlignment = CENTER,
     .verticalAlignment = CENTER,
     }).NewChild<UITexturedQuad>(&m_texture, UIProps {
-      .width = 40,
-      .height = 40,
+      .width = 48,
+      .height = 48,
       });
 }
 

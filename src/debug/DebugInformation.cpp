@@ -301,7 +301,7 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     if (ImGui::BeginTabItem("Data")) {
 
       if (ImGui::Button("Reload shaders")) {
-        ShaderLibrary::GetInstance().LoadShaders();
+        ShaderLibrary::GetInstance().ReloadShaders();
       }
 
       if (ImGui::Button("Reload textures")) {
