@@ -33,7 +33,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
 
     // Chunks could have been deleted, so obtain a valid pointer if one exists
     if (auto chunk = weakChunk.lock()) {
-      if (!chunk->HasGeneratedTerrain()) {
+      if (chunk->GetState() < GENERATED_TERRAIN) {
         chunk->GenerateTerrain();
       }
 
@@ -53,7 +53,7 @@ void chunkTerrainGeneratorWorker(World& world, int workerId) {
           glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
 
           std::shared_ptr<Chunk> neighborChunk = world.GetChunkAt(secondChunkCoord);
-          if (neighborChunk == nullptr || !neighborChunk->HasGeneratedTerrain()) {
+          if (neighborChunk == nullptr || neighborChunk->GetState() < GENERATED_TERRAIN) {
             ready = false;
             break;
           }
@@ -79,7 +79,7 @@ void chunkLightingWorker(World& world, int workerId) {
 
     if (auto chunk = weakChunk.lock()) {
 
-      if (!chunk->HasPropagatedLighting()) {
+      if (chunk->GetState() < PROPAGATED_LIGHTING) {
         chunk->PropagateLighting();
       }
 
@@ -97,7 +97,7 @@ void chunkLightingWorker(World& world, int workerId) {
           glm::ivec2 secondChunkCoord = chunkCoord + secondOffset;
 
           std::shared_ptr<Chunk> neighborChunk = world.GetChunkAt(secondChunkCoord);
-          if (neighborChunk == nullptr || !neighborChunk->HasPropagatedLighting()) {
+          if (neighborChunk == nullptr || neighborChunk->GetState() < PROPAGATED_LIGHTING) {
             ready = false;
             break;
           }

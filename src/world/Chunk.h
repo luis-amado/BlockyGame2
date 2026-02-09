@@ -34,6 +34,14 @@ struct SkyBlockLight {
   void SetLight(LightType type, char value);
 };
 
+enum ChunkState {
+  INITIALIZED,
+  GENERATED_TERRAIN,
+  PROPAGATED_LIGHTING,
+  GENERATED_MESH,
+  APPLIED_MESH
+};
+
 using PositionsToSpreadLightMap = std::unordered_map<glm::ivec3, char, IVec3Hash, IVec3Equal>;
 
 class Chunk : public std::enable_shared_from_this<Chunk> {
@@ -70,10 +78,7 @@ public:
 
   void InvalidateMesh();
 
-  bool HasAppliedMesh() const;
-  bool HasGeneratedTerrain() const;
-  bool HasGeneratedMesh() const;
-  bool HasPropagatedLighting() const;
+  ChunkState GetState() const;
 
   glm::ivec2 GetChunkCoord() const;
   std::shared_ptr<Chunk> GetNeighbor(int localX, int localZ);
@@ -104,10 +109,7 @@ private:
 
   // TODO: Make a state enum variable
   mutable std::mutex m_stateMutex;
-  bool m_generatedTerrain = false;
-  bool m_propagatedLighting = false;
-  bool m_generatedMesh = false;
-  bool m_appliedMesh = false;
+  ChunkState m_state = INITIALIZED;
 
   bool m_active = false;
 

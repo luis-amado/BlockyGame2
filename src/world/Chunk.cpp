@@ -36,7 +36,7 @@ void Chunk::GenerateMesh() {
 
   {
     std::lock_guard<std::mutex> lock(m_stateMutex);
-    m_generatedMesh = true;
+    m_state = GENERATED_MESH;
   }
 }
 
@@ -55,7 +55,7 @@ void Chunk::PropagateLighting() {
 
   {
     std::lock_guard<std::mutex> lock(m_stateMutex);
-    m_propagatedLighting = true;
+    m_state = PROPAGATED_LIGHTING;
   }
 }
 
@@ -309,7 +309,7 @@ void Chunk::ApplyMesh() {
   m_subchunkMeshesData.resize(Chunk::SUBCHUNK_LAYERS, {});
   {
     std::lock_guard<std::mutex> lock(m_stateMutex);
-    m_appliedMesh = true;
+    m_state = APPLIED_MESH;
   }
 }
 
@@ -390,7 +390,7 @@ void Chunk::GenerateTerrain() {
 
   {
     std::lock_guard<std::mutex> lock(m_stateMutex);
-    m_generatedTerrain = true;
+    m_state = GENERATED_TERRAIN;
   }
 }
 
@@ -480,7 +480,7 @@ void Chunk::CleanDirty() {
 
 void Chunk::Draw(Shader& shader) const {
   // TODO: Use some sort of frustum culling to prevent non-visible chunks from being drawn
-  if (!m_active || !m_appliedMesh) return;
+  if (!m_active || m_state < APPLIED_MESH) return;
 
   glm::mat4 model(1.0f);
   const DebugSettings& settings = DebugSettings::instance;
@@ -572,28 +572,12 @@ void Chunk::SetActive(bool value) {
 
 void Chunk::InvalidateMesh() {
   std::lock_guard<std::mutex> lock(m_stateMutex);
-  m_generatedMesh = false;
-  m_appliedMesh = false;
+  m_state = PROPAGATED_LIGHTING;
 }
 
-bool Chunk::HasAppliedMesh() const {
+ChunkState Chunk::GetState() const {
   std::lock_guard<std::mutex> lock(m_stateMutex);
-  return m_appliedMesh;
-}
-
-bool Chunk::HasGeneratedTerrain() const {
-  std::lock_guard<std::mutex> lock(m_stateMutex);
-  return m_generatedTerrain;
-}
-
-bool Chunk::HasGeneratedMesh() const {
-  std::lock_guard<std::mutex> lock(m_stateMutex);
-  return m_generatedMesh;
-}
-
-bool Chunk::HasPropagatedLighting() const {
-  std::lock_guard<std::mutex> lock(m_stateMutex);
-  return m_propagatedLighting;
+  return m_state;
 }
 
 glm::ivec2 Chunk::GetChunkCoord() const {
