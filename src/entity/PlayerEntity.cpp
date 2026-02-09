@@ -386,17 +386,16 @@ double PlayerEntity::GetStandingEyeLevel() const {
 void PlayerEntity::PlaceBlock() const {
   if (!m_lookingAtBlock.has_value()) return;
 
-  if (m_ghost) {
-    m_world->UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
-  } else {
+  // Check placed block doesn't collide with player hitbox
+  if (!m_ghost) {
     BoundingBox bb = GetBoundingBox();
     AABB playerAABB = AABB::CreateFromBottomCenter(GetPosition(), bb.width, bb.height);
     AABB blockAABB = AABB::CreateFromMinCorner(m_placingAtBlock.value(), 1.0, 1.0);
 
-    if (!playerAABB.IsColliding(blockAABB)) {
-      m_world->UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
-    }
+    if (playerAABB.IsColliding(blockAABB)) return;
   }
+
+  m_world->UpdateBlockstateAt(m_placingAtBlock->x, m_placingAtBlock->y, m_placingAtBlock->z, *GetPlaceableBlocks()[m_selectedSlot]);
 }
 
 void PlayerEntity::RemoveBlock() const {
