@@ -5,7 +5,7 @@
 
 #ifdef DEBUG
 #define DEBUG_ASSERT(statement) \
-  if (!(statement)) LOG(FATAL) << "Assertion failed: (" << TERM_YELLOW << #statement << TERM_RESET << ") at " << __FILE_NAME__ << ":" << __LINE__ << TERM_RED << ' '
+  if (!(statement)) LOG(FATAL) << "Assertion failed at " << __FILE_NAME__ << ":" << __LINE__ << TERM_RED << ' '
 #define DEBUG_LOG(severity) LOG(severity)
 #define DEBUG_LOG_STATEMENT(severity, statement) LOG_STATEMENT(severity, statement)
 

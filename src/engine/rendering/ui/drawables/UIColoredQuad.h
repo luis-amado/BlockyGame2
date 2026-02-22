@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../helpers/Color.h"
+#include "util/Color.h"
 #include "UIQuad.h"
 
 class UIColoredQuad : public UIQuad {

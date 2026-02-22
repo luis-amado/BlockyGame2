@@ -7,6 +7,7 @@
 #include "Window.h"
 #include "Input.h"
 #include "util/Logging.h"
+#include "util/Color.h"
 #include "Time.h"
 
 void framebufferSizeCallback(GLFWwindow* windowHandle, int width, int height) {
@@ -57,7 +58,8 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
   // Setup window callbacks
   glfwSetFramebufferSizeCallback(windowHandle, framebufferSizeCallback);
 
-  glClearColor(0.0, 0.0, 0.0, 1.0);
+  // Sky color
+  glClearColor(COLOR_RGB(Color("#7092a7")), 1.0);
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
