@@ -46,8 +46,8 @@ public:
   // movement settings
   double gravity = -22.0;
   double jumpForce = 7.2;
-  double walkSpeed = 3.5;
-  double sprintMultiplier = 1.8;
+  double walkSpeed = 2.5;
+  double sprintMultiplier = 2.0;
 
   DebugSettings() = default;
   static DebugSettings instance;
