@@ -1,8 +1,11 @@
 #pragma once
 
+#include "util/Color.h"
+
 class DebugSettings {
 public:
   // visual settings
+  glm::vec3 skyColor = Color("#315CA1");
   float defaultFOV = 90.0f;
 
   bool smoothLighting = true;

@@ -71,9 +71,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
       glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     } else {
       glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-      glm::ivec2 windowFrame = Input::s_window->GetFrame();
-      int midX = windowFrame.x / 4;
-      int midY = windowFrame.y / 4;
+      glm::ivec2 windowFrame = Input::s_window->GetSize();
+      int midX = windowFrame.x / 2;
+      int midY = windowFrame.y / 2;
       glfwSetCursorPos(window, midX, midY);
       Input::s_prevMouseX = midX;
       Input::s_prevMouseY = midY;
@@ -152,7 +152,7 @@ void Input::Init(Window* window) {
 // Should be called when the frame starts
 void Input::Update() {
   for (auto& [key, intervals] : s_registeredInputIntervals) {
-    if (!IsPressed(key)) {
+    if (!IsPressed(key) && !IsJustPressed(key)) {
       for (auto& interval : intervals) {
         interval.timePassed = interval.time;
       }

@@ -103,7 +103,19 @@ void PlayerEntity::Setup(World* world) {
   Input::SubscribeKeyCallbackRange('1', '9', [&](int key, int action, int mods) {
     if (action != GLFW_PRESS) return;
     m_selectedSlot = key - '1';
-    m_selectedSlot = MathUtil::Clamp(m_selectedSlot, 0, (int)GetPlaceableBlocks().size());
+    m_selectedSlot = MathUtil::Clamp(m_selectedSlot, 0, (int)GetPlaceableBlocks().size() - 1);
+    m_onSelectedSlotChanged(m_selectedSlot);
+  });
+  Input::SubscribeInputHeldInterval(GLFW_KEY_LEFT, 0.2, [&](int key, int action, int mods) {
+    if (action != GLFW_PRESS) return;
+    m_selectedSlot--;
+    m_selectedSlot = MathUtil::Mod(m_selectedSlot, (int)GetPlaceableBlocks().size());
+    m_onSelectedSlotChanged(m_selectedSlot);
+  });
+  Input::SubscribeInputHeldInterval(GLFW_KEY_RIGHT, 0.2, [&](int key, int action, int mods) {
+    if (action != GLFW_PRESS) return;
+    m_selectedSlot++;
+    m_selectedSlot = MathUtil::Mod(m_selectedSlot, (int)GetPlaceableBlocks().size());
     m_onSelectedSlotChanged(m_selectedSlot);
   });
 
@@ -169,7 +181,7 @@ void PlayerEntity::Update() {
     }
 
     // Normalize camera rotation
-    rot.y = std::fmod(rot.y, 360.0);
+    rot.y = MathUtil::fMod(rot.y, 360.0);
 
     // Lock max vertical rotation to straight up and straight down
     if (rot.x > 90.0f) {

@@ -29,13 +29,12 @@ std::optional<Window> Window::CreateWindow(const std::string& windowTitle, int w
 
   // Get window stats
   const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  LOG(INFO) << "Window refresh rate: " << mode->refreshRate << " hz";
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-  // glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+  glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
   GLFWwindow* windowHandle = glfwCreateWindow(windowWidth, windowHeight, windowTitle.c_str(), NULL, NULL);
 

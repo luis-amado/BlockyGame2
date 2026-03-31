@@ -67,14 +67,14 @@ public:
   T& AddChild(std::unique_ptr<T> child) {
     child->m_parent = this;
     m_children.push_back(std::move(child));
-    return (T&)*m_children[m_children.size() - 1];
+    return static_cast<T&>(*m_children[m_children.size() - 1]);
   }
 
   // Creates a new unique_ptr for the child element
   template <typename T, typename... Args>
   T& NewChild(Args... args) {
     m_children.push_back(std::make_unique<T>(args...));
-    return (T&)*m_children[m_children.size() - 1];
+    return static_cast<T&>(*m_children[m_children.size() - 1]);
   }
 
   void SetProps(UIProps props);

@@ -69,6 +69,8 @@ int main() {
   });
 
   while (window.IsRunning()) {
+    glClearColor(DebugSettings::instance.skyColor.r, DebugSettings::instance.skyColor.g, DebugSettings::instance.skyColor.b, 1.0);
+
     window.BeginFrame();
 
     if (DebugSettings::instance.updateWorld) {

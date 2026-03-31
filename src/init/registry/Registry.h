@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <vector>
 #include <string>
 
 // A registry is just a container that can query items which have a registryName
@@ -10,16 +11,21 @@ public:
   Registry() = default;
 
   const T& Register(T item) {
-    m_map[item.GetRegistryName()] = item;
-    return m_map.at(item.GetRegistryName());
+    std::string name = item.GetRegistryName();
+    m_map[name] = item;
+    return m_map.at(name);
   }
 
   const T& Get(const std::string& registryName) const {
     return m_map.at(registryName);
   }
 
-  std::unordered_map<std::string, T>& GetAll() {
-    return m_map;
+  std::vector<T*> GetAll() {
+    std::vector<T*> items;
+    for (auto& pair : m_map) {
+      items.push_back(&pair.second);
+    }
+    return items;
   }
 
 private:

@@ -28,7 +28,7 @@ enum class LightType {
 struct SkyBlockLight {
   // char is 8 bits, a light value is only 4 bits
   // first 4 bits are sky, last 4 bits are block
-  unsigned char m_value;
+  unsigned char m_value = 0;
 
   char GetLight(LightType type);
   void SetLight(LightType type, char value);
@@ -99,8 +99,8 @@ private:
   std::vector<std::weak_ptr<Chunk>> m_neighbors;
   glm::ivec2 m_chunkCoord;
 
-  std::vector<Blockstate> m_blockstates;
-  std::vector<SkyBlockLight> m_lights;
+  std::unique_ptr<Blockstate[]> m_blockstates;
+  std::unique_ptr<SkyBlockLight[]> m_lights;
 
   std::vector<Mesh> m_subchunkMeshes;
   std::vector<MeshData> m_subchunkMeshesData;

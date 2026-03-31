@@ -33,7 +33,7 @@ Color::Color(std::string hexCode) {
     return;
   }
 
-  unsigned int r, g, b, a = 255;
+  unsigned int r = 0, g = 0, b = 0, a = 255;
 
   if (hexCode.length() == 4) {
     // RGB

@@ -22,9 +22,6 @@ void GameUI::Update(const Window& window) {
 
   m_hotbarLayer.Resize(windowSize);
   m_crosshairLayer.Resize(windowSize);
-
-  m_hotbarLayer.Update();
-  m_crosshairLayer.Update();
 }
 
 void GameUI::Draw() {

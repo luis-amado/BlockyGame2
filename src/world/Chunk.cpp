@@ -21,8 +21,16 @@ const int Chunk::SUBCHUNK_LAYERS = 16;
 const int Chunk::CHUNK_WIDTH = 16;
 const int Chunk::CHUNK_HEIGHT = Chunk::SUBCHUNK_HEIGHT * Chunk::SUBCHUNK_LAYERS;
 
-Chunk::Chunk(glm::ivec2 chunkCoord, World& world)
-  : m_neighbors(8), m_chunkCoord(chunkCoord), m_blockstates(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH), m_lights(CHUNK_WIDTH* CHUNK_HEIGHT* CHUNK_WIDTH, { 0 }), m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
+namespace {
+const int CHUNK_VOLUME = Chunk::CHUNK_WIDTH * Chunk::CHUNK_HEIGHT * Chunk::CHUNK_WIDTH;
+}  // namespace
+
+Chunk::Chunk(glm::ivec2 chunkCoord, World& world) :
+  m_neighbors(8),
+  m_chunkCoord(chunkCoord),
+  m_blockstates(std::make_unique<Blockstate[]>(CHUNK_VOLUME)),
+  m_lights(std::make_unique<SkyBlockLight[]>(CHUNK_VOLUME)),
+  m_subchunkMeshes(SUBCHUNK_LAYERS), m_world(world) {}
 
 
 void Chunk::GenerateMesh() {
@@ -647,6 +655,7 @@ void Chunk::SpawnTrees() {
       for (int dy = -2; dy <= 2; dy++) {
         for (int dz = -2; dz <= 2; dz++) {
           if (dx == 0 && dz == 0 && dy < 0) continue;
+          if (IsInOtherChunk(x + dx, y + dy + treeHeight, z + dz)) continue;
           SetBlockstateAt(x + dx, y + dy + treeHeight, z + dz, Blocks::OAK_LEAVES);
         }
       }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <string>
 
@@ -9,6 +10,13 @@ class Color {
 public:
   Color() = default;
   Color(std::string hexCode);
+
+  operator glm::vec3() {
+    return { m_rgba.r, m_rgba.g, m_rgba.b };
+  }
+  operator glm::vec4() {
+    return m_rgba;
+  }
 
   static Color RGB(float r, float g, float b);
   static Color RGBA(float r, float g, float b, float a);

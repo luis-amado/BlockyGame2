@@ -3,6 +3,7 @@
 #include "../init/registry/RegistryItem.h"
 #include <unordered_map>
 #include "BlockTextures.h"
+#include "util/Logging.h"
 
 using Blockstate = unsigned char;
 
@@ -20,6 +21,7 @@ public:
 
   static const Block& FromBlockstate(char blockstate);
 
+  // Builder methods
   Block& NotSolid();
   Block& Air();
   Block& LightLevel(char lightLevel);

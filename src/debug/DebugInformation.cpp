@@ -185,9 +185,12 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
     ImGui::Text("FPS: %d", s_fps);
     ImGui::Text("XYZ: %.5f / %.5f / %.5f", playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Rot: %.3f %.3f", player.GetRotation().x, player.GetRotation().y);
+    Direction facingDirection = DirectionUtil::GetHorizontalFacingAxis(player.GetRotation().y);
+    ImGui::Text("Facing: %s (%s)", DirectionUtil::ToString(facingDirection).c_str(), DirectionUtil::GetOffsetAsString(facingDirection).c_str());
     ImGui::Text("");
     ImGui::Text("Vel: %.3f %.3f %.3f", player.GetVelocity().x, player.GetVelocity().y, player.GetVelocity().z);
     ImGui::Text("Speed: %.2lfx", player.GetSpeedMultiplier());
+
     ImGui::Text("");
     if (player.GetLookingAtBlock().has_value()) {
       const glm::ivec3& lookingAt = player.GetLookingAtBlock().value();
@@ -286,6 +289,12 @@ void DebugInformation::ShowIfActive(World& world, const PlayerEntity& player) {
       ImGui::Text("Debug");
       ImGui::Checkbox("Show chunk boundaries", &DebugSettings::instance.showChunkBoundaries);
       ImGui::Checkbox("Show player hitbox", &DebugSettings::instance.showPlayerHitbox);
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Sky")) {
+      ImGui::ColorPicker3("Sky color", &DebugSettings::instance.skyColor.r);
 
       ImGui::EndTabItem();
     }
