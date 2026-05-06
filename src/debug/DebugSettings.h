@@ -5,7 +5,7 @@
 class DebugSettings {
 public:
   // visual settings
-  glm::vec3 skyColor = Color("#315CA1");
+  glm::vec3 skyColor = Color("#5A83C6");
   float defaultFOV = 90.0f;
 
   bool smoothLighting = true;

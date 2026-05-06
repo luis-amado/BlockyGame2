@@ -38,14 +38,14 @@ void HotbarSlot::SetSelectedIndex(int selectedIndex) {
 
 HotbarLayer::HotbarLayer(PlayerEntity& player) {
   SetProps({
+    .padding = {20, 0},
     .horizontalAlignment = CENTER,
     .verticalAlignment = END,
-    .padding = {20, 0},
     });
 
   UIColoredQuad& hotbarContainer = NewChild<UIColoredQuad>(Color::BLACK.Opacity(0.3f), UIProps {
-    .childGap = 2,
     .padding = 2,
+    .childGap = 2,
     });
 
   std::vector<const Block*> blocks = PlayerEntity::GetPlaceableBlocks();
